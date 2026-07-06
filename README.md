@@ -20,6 +20,9 @@ npm run dev
 Open http://localhost:3000. No database, no accounts — everything runs in
 your browser with local state only.
 
+Looking for the technical deep-dive (model formulas, hydrology pipeline,
+code map)? See [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md).
+
 Don't have a GPX file handy? Click **"Load the sample Basel Rhine swim"** on
 the upload screen — a realistic 2.3 km / 20 min evening swim from
 Schwarzwaldbrücke to Johanniterbrücke ships in
