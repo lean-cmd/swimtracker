@@ -52,12 +52,16 @@ struggle in the Rhine (GPS drops underwater, optical HR fails in water):
 (e.g. ~613 m³/s on a dry July day vs ~1,050 m³/s annual mean), and the
 current also depends on where you swim in the channel:
 
-- On load the app automatically fetches the latest discharge from the Basel
-  open data portal, dataset
+- The user never has to enter a flow rate. On load the app resolves it
+  automatically, in order: **(1)** live discharge from the Basel open data
+  portal, dataset
   [100089 — "Rhein Wasserstand, Pegel und Abfluss"](https://data.bs.ch/explore/dataset/100089/)
-  (~5-minute values from BAFU station 2289, Rhein–Basel/Rheinhalle),
-  straight from your browser. If the fetch fails, type the value from the
-  BachApp.
+  (~5-minute values from BAFU station 2289, Rhein–Basel/Rheinhalle), fetched
+  straight from the browser; **(2)** the last successful reading cached in
+  this browser, if less than 7 days old; **(3)** the long-term monthly
+  average for the current month (climatology table in `lib/hydro.ts`). The
+  status line always says which source is in use. A manual m³/s override
+  lives under "Advanced".
 - Discharge maps to an estimated **midstream surface velocity** via an
   empirical lookup (see `lib/hydro.ts`): <500 m³/s → ~0.8 m/s, 500–700 →
   1.0–1.2, 700–900 → 1.2–1.4, 900–1100 → 1.4–1.6, 1100–1400 → 1.6–1.9,

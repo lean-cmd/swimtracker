@@ -7,15 +7,26 @@ import {
   HIGH_FLOW_M3S,
   SWIM_POSITIONS,
   fetchLiveFlow,
+  loadCachedFlow,
   midstreamCurrentFromDischarge,
+  saveCachedFlow,
+  seasonalDischarge,
 } from "@/lib/hydro";
 import { kmhToMs, msToKmh } from "@/lib/format";
 
+/**
+ * Flow resolution, invisible to the user:
+ *   1. live reading from data.bs.ch (dataset 100089)
+ *   2. last successful reading cached in this browser (< 7 days old)
+ *   3. seasonal monthly average for the Rhine at Basel
+ * Manual entry exists only under "Advanced".
+ */
 type FlowState =
   | { status: "loading" }
   | { status: "live"; q: number; when: string | null }
-  | { status: "manual"; q: number }
-  | { status: "error" };
+  | { status: "cached"; q: number; fetchedAt: number }
+  | { status: "seasonal"; q: number; month: string }
+  | { status: "manual"; q: number };
 
 export default function CurrentControls({
   riverId,
@@ -37,28 +48,47 @@ export default function CurrentControls({
   const isBasel = riverId === "basel-rhine";
   const [flow, setFlow] = useState<FlowState>({ status: "loading" });
   const [flowText, setFlowText] = useState("");
-  const fetchedOnce = useRef(false);
+  const resolvedOnce = useRef(false);
 
   const applyDischarge = useCallback(
     (q: number) => onCurrentChange(midstreamCurrentFromDischarge(q)),
     [onCurrentChange]
   );
 
-  // Really simple UX: fetch today's flow automatically, once, on load.
   useEffect(() => {
-    if (!isBasel || fetchedOnce.current) return;
-    fetchedOnce.current = true;
+    if (!isBasel || resolvedOnce.current) return;
+    resolvedOnce.current = true;
     fetchLiveFlow()
       .then((live) => {
+        saveCachedFlow(live);
         setFlow({ status: "live", q: live.dischargeM3s, when: live.timestamp });
-        setFlowText(String(Math.round(live.dischargeM3s)));
         applyDischarge(live.dischargeM3s);
       })
-      .catch(() => setFlow({ status: "error" }));
+      .catch(() => {
+        const cached = loadCachedFlow();
+        if (cached) {
+          setFlow({
+            status: "cached",
+            q: cached.dischargeM3s,
+            fetchedAt: cached.fetchedAt,
+          });
+          applyDischarge(cached.dischargeM3s);
+        } else {
+          const now = new Date();
+          const q = seasonalDischarge(now);
+          setFlow({
+            status: "seasonal",
+            q,
+            month: now.toLocaleString("en", { month: "long" }),
+          });
+          applyDischarge(q);
+        }
+      });
   }, [isBasel, applyDischarge]);
 
   const q =
-    flow.status === "live" || flow.status === "manual" ? flow.q : null;
+    flow.status === "loading" ? null : (flow as Exclude<FlowState, { status: "loading" }>).q;
+  const midstream = q !== null ? midstreamCurrentFromDischarge(q) : null;
 
   const inputClass =
     "w-full rounded-lg border border-slate-600 bg-slate-800 p-2.5 text-sm text-slate-100";
@@ -69,59 +99,29 @@ export default function CurrentControls({
 
       {isBasel ? (
         <div className="space-y-2">
-          {/* one-line flow status — the whole UX for most swims */}
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-600/60 bg-slate-900/40 p-3 text-sm">
+          <div className="rounded-lg border border-slate-600/60 bg-slate-900/40 p-3 text-sm">
             {flow.status === "loading" && (
               <span className="text-slate-400">
-                Fetching today&apos;s Rhine flow from data.bs.ch…
+                Getting today&apos;s Rhine flow…
               </span>
             )}
-            {flow.status === "live" && (
+            {q !== null && (
               <span className="text-slate-200">
-                🌊 Rhine now: <strong>{Math.round(flow.q)} m³/s</strong> →
-                midstream ≈ {midstreamCurrentFromDischarge(flow.q).toFixed(2)}{" "}
-                m/s{" "}
+                🌊 Rhine flow: <strong>{Math.round(q)} m³/s</strong> →
+                midstream ≈ <strong>{midstream!.toFixed(2)} m/s</strong>{" "}
                 <span className="text-xs text-slate-500">
-                  (live{flow.when ? `, ${flow.when}` : ""})
+                  {flow.status === "live" &&
+                    `(live from data.bs.ch${"when" in flow && flow.when ? `, ${flow.when}` : ""})`}
+                  {flow.status === "cached" &&
+                    `(last known reading, ${new Date(
+                      (flow as { fetchedAt: number }).fetchedAt
+                    ).toLocaleDateString()})`}
+                  {flow.status === "seasonal" &&
+                    `(typical ${(flow as { month: string }).month} value — live data unavailable)`}
+                  {flow.status === "manual" && "(set manually)"}
                 </span>
               </span>
             )}
-            {flow.status === "manual" && (
-              <span className="text-slate-200">
-                🌊 Flow set to <strong>{Math.round(flow.q)} m³/s</strong> →
-                midstream ≈ {midstreamCurrentFromDischarge(flow.q).toFixed(2)}{" "}
-                m/s
-              </span>
-            )}
-            {flow.status === "error" && (
-              <span className="text-amber-300">
-                Couldn&apos;t reach data.bs.ch — enter today&apos;s flow from
-                the BachApp:
-              </span>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <input
-              type="number"
-              min="0"
-              placeholder="flow in m³/s, e.g. 613"
-              value={flowText}
-              onChange={(e) => setFlowText(e.target.value)}
-              className={inputClass}
-              aria-label="Flow rate in cubic meters per second"
-            />
-            <button
-              disabled={!(parseFloat(flowText) > 0)}
-              onClick={() => {
-                const v = parseFloat(flowText);
-                setFlow({ status: "manual", q: v });
-                applyDischarge(v);
-              }}
-              className="shrink-0 rounded-lg bg-sky-700 px-3 text-sm text-white hover:bg-sky-600 disabled:opacity-40"
-            >
-              Use m³/s
-            </button>
           </div>
 
           {q !== null && q > FLOW_WARNING_M3S && (
@@ -161,17 +161,42 @@ export default function CurrentControls({
         </div>
         <p className="mt-1 text-xs text-slate-500">
           The bank runs slower than midstream (Kleinbasel is the inside of the
-          bend). Your pick scales the current: {" "}
+          bend). Your pick scales the current:{" "}
           {SWIM_POSITIONS.map((p) => `×${p.factor}`).join(" / ")}.
         </p>
       </div>
 
-      {/* advanced: direct current control + other rivers */}
+      {/* advanced: override flow or current directly, other rivers */}
       <details className="group">
         <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-200">
-          Advanced: set current speed manually / other river
+          Advanced: set flow or current manually / other river
         </summary>
         <div className="mt-3 space-y-3">
+          {isBasel && (
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0"
+                placeholder="flow in m³/s, e.g. 613"
+                value={flowText}
+                onChange={(e) => setFlowText(e.target.value)}
+                className={inputClass}
+                aria-label="Flow rate in cubic meters per second"
+              />
+              <button
+                disabled={!(parseFloat(flowText) > 0)}
+                onClick={() => {
+                  const v = parseFloat(flowText);
+                  setFlow({ status: "manual", q: v });
+                  applyDischarge(v);
+                }}
+                className="shrink-0 rounded-lg bg-sky-700 px-3 text-sm text-white hover:bg-sky-600 disabled:opacity-40"
+              >
+                Use m³/s
+              </button>
+            </div>
+          )}
+
           <label className="block text-sm text-slate-300">
             River preset
             <select

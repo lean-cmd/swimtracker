@@ -113,39 +113,38 @@ export default function Home() {
       )}
 
       {input && (
-        <>
-          <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-300">
-            <span className="font-medium text-slate-100">{activeLabel}</span>
-            {" · "}
-            {formatDistance(input.distanceMeters)} in{" "}
-            {formatDuration(input.elapsedSeconds)}
-            {mode === "gpx" && input.routeAlignment < 0.98 && (
-              <span className="text-slate-400">
-                {" "}
-                · route alignment {(input.routeAlignment * 100).toFixed(0)}%
-              </span>
-            )}
-          </div>
-
-          {mode === "gpx" && track && <RouteMap points={track.points} />}
-
-          <CurrentControls
-            riverId={riverId}
-            onRiverChange={setRiverId}
-            currentMs={currentMs}
-            onCurrentChange={setCurrentMs}
-            positionId={positionId}
-            onPositionChange={setPositionId}
-          />
-
-          {result && (
-            <ResultsDashboard
-              result={result}
-              riverName={river.name}
-              isGps={mode === "gpx"}
-            />
+        <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-300">
+          <span className="font-medium text-slate-100">{activeLabel}</span>
+          {" · "}
+          {formatDistance(input.distanceMeters)} in{" "}
+          {formatDuration(input.elapsedSeconds)}
+          {mode === "gpx" && input.routeAlignment < 0.98 && (
+            <span className="text-slate-400">
+              {" "}
+              · route alignment {(input.routeAlignment * 100).toFixed(0)}%
+            </span>
           )}
-        </>
+        </div>
+      )}
+
+      {mode === "gpx" && track && <RouteMap points={track.points} />}
+
+      {/* Always visible: today's flow resolves on load, before any input */}
+      <CurrentControls
+        riverId={riverId}
+        onRiverChange={setRiverId}
+        currentMs={currentMs}
+        onCurrentChange={setCurrentMs}
+        positionId={positionId}
+        onPositionChange={setPositionId}
+      />
+
+      {input && result && (
+        <ResultsDashboard
+          result={result}
+          riverName={river.name}
+          isGps={mode === "gpx"}
+        />
       )}
 
       <footer className="space-y-1 border-t border-slate-800 pt-4 text-xs text-slate-500">

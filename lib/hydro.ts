@@ -82,6 +82,75 @@ export const HIGH_FLOW_M3S = 1400;
 /** Official canton guidance: don't swim above this discharge. */
 export const FLOW_WARNING_M3S = 1500;
 
+/**
+ * Approximate long-term monthly mean discharge (m³/s) for the Rhine at
+ * Basel, index 0 = January. Snowmelt peaks in early summer, autumn runs low.
+ *
+ * SIMPLIFICATION: rounded climatology values for the Rheinhalle station —
+ * good enough as a last-resort default so the average user never has to
+ * type a flow. A better version would compute real monthly means from the
+ * dataset 100089 history (or ship BAFU's published statistics).
+ */
+export const SEASONAL_Q_BY_MONTH: number[] = [
+  1050, // Jan
+  1030, // Feb
+  1090, // Mar
+  1160, // Apr
+  1310, // May
+  1450, // Jun
+  1350, // Jul
+  1200, // Aug
+  1000, // Sep
+  950, // Oct
+  980, // Nov
+  1050, // Dec
+];
+
+export const seasonalDischarge = (date: Date): number =>
+  SEASONAL_Q_BY_MONTH[date.getMonth()];
+
+/** Last successful live reading, cached so offline visits still get a real value. */
+const CACHE_KEY = "currentcorrector.lastFlow";
+/** Cached readings older than this fall back to the seasonal average. */
+const CACHE_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
+
+export interface CachedFlow {
+  dischargeM3s: number;
+  fetchedAt: number; // epoch ms
+  timestamp: string | null; // measurement time as reported by the API
+}
+
+export function saveCachedFlow(flow: LiveFlow): void {
+  try {
+    const entry: CachedFlow = {
+      dischargeM3s: flow.dischargeM3s,
+      fetchedAt: Date.now(),
+      timestamp: flow.timestamp,
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    // storage unavailable (private mode etc.) — the seasonal fallback covers it
+  }
+}
+
+export function loadCachedFlow(): CachedFlow | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as CachedFlow;
+    if (
+      typeof entry.dischargeM3s !== "number" ||
+      typeof entry.fetchedAt !== "number" ||
+      Date.now() - entry.fetchedAt > CACHE_MAX_AGE_MS
+    ) {
+      return null;
+    }
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
 export interface LiveFlow {
   dischargeM3s: number;
   levelM: number | null;
