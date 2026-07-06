@@ -14,9 +14,12 @@ import StatCard from "./StatCard";
 export default function ResultsDashboard({
   result,
   riverName,
+  isGps = true,
 }: {
   result: CorrectionResult;
   riverName: string;
+  /** false when the distance came from spot-to-spot estimation, not GPS. */
+  isGps?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const summary = buildStravaSummary(result, riverName);
@@ -43,7 +46,7 @@ export default function ResultsDashboard({
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <StatCard
-          label="GPS distance"
+          label={isGps ? "GPS distance" : "Route distance (est.)"}
           value={formatDistance(result.gpsDistanceMeters)}
         />
         <StatCard
@@ -51,7 +54,7 @@ export default function ResultsDashboard({
           value={formatDuration(result.elapsedSeconds)}
         />
         <StatCard
-          label="Avg GPS speed"
+          label={isGps ? "Avg GPS speed" : "Avg speed over ground"}
           value={formatSpeed(result.gpsSpeedMs)}
           sub={formatPace(result.gpsPaceSecPer100m)}
         />

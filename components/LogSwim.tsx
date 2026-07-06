@@ -1,25 +1,43 @@
 "use client";
 
 import { useState } from "react";
-import { BASEL_SPOTS, distanceBetweenSpots } from "@/lib/rivers";
+import { BASEL_SPOTS, distanceBetweenSpots, spotIndex } from "@/lib/rivers";
 import type { SwimInput } from "@/lib/types";
+import BaselMap from "./BaselMap";
 
 /**
- * Fallback for swims where the watch didn't track properly (common in the
- * Rhine — GPS drops underwater): pick entry/exit spots in Basel, enter the
- * time in the water, and say whether you swam or floated.
+ * Basel-first self-reported logging: pick entry/exit on the map (or the
+ * dropdowns), enter time in the water, say whether you swam or floated.
+ * Built for the common case — trackers lose GPS in the Rhine.
  */
-export default function ManualEntry({
+export default function LogSwim({
   onSubmit,
 }: {
   onSubmit: (input: SwimInput, effort: "swim" | "float", label: string) => void;
 }) {
-  const [entry, setEntry] = useState(BASEL_SPOTS[0].id);
-  const [exit, setExit] = useState(BASEL_SPOTS[BASEL_SPOTS.length - 1].id);
-  const [minutes, setMinutes] = useState("30");
+  const [entry, setEntry] = useState<string>("tinguely");
+  const [exit, setExit] = useState<string>("johanniterbruecke");
+  const [minutes, setMinutes] = useState("25");
   const [effort, setEffort] = useState<"swim" | "float">("swim");
 
-  const distance = distanceBetweenSpots(entry, exit);
+  // Map taps: first tap (or tap while a full pair exists) restarts with a new
+  // entry; second tap sets the exit. Order is normalized to downstream.
+  const pickSpot = (id: string) => {
+    if (!entry || (entry && exit)) {
+      setEntry(id);
+      setExit("");
+      return;
+    }
+    if (id === entry) return;
+    if (spotIndex(id) < spotIndex(entry)) {
+      setExit(entry);
+      setEntry(id);
+    } else {
+      setExit(id);
+    }
+  };
+
+  const distance = entry && exit ? distanceBetweenSpots(entry, exit) : 0;
   const mins = parseFloat(minutes);
   const valid = distance > 0 && Number.isFinite(mins) && mins > 0;
 
@@ -28,6 +46,13 @@ export default function ManualEntry({
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-slate-400">
+        Tap your entry spot, then your exit spot (★ = the classics). Exit at
+        Dreirosenbrücke at the latest — swimming in the harbor is forbidden.
+      </p>
+
+      <BaselMap entryId={entry || null} exitId={exit || null} onPick={pickSpot} />
+
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm text-slate-300">
           Entry point
@@ -36,8 +61,10 @@ export default function ManualEntry({
             onChange={(e) => setEntry(e.target.value)}
             className={`mt-1 ${selectClass}`}
           >
+            <option value="">—</option>
             {BASEL_SPOTS.map((s) => (
               <option key={s.id} value={s.id}>
+                {s.popular ? "★ " : ""}
                 {s.name}
               </option>
             ))}
@@ -50,8 +77,10 @@ export default function ManualEntry({
             onChange={(e) => setExit(e.target.value)}
             className={`mt-1 ${selectClass}`}
           >
+            <option value="">—</option>
             {BASEL_SPOTS.map((s) => (
               <option key={s.id} value={s.id}>
+                {s.popular ? "★ " : ""}
                 {s.name}
               </option>
             ))}
@@ -60,12 +89,10 @@ export default function ManualEntry({
       </div>
 
       <p className="text-xs text-slate-400">
-        Estimated distance between spots:{" "}
+        Estimated swim distance:{" "}
         <span className="font-medium text-slate-200">
-          {distance > 0 ? `${Math.round(distance)} m` : "pick two different spots"}
-        </span>{" "}
-        · Spots run upstream → downstream; exit before the harbor at
-        Dreirosenbrücke.
+          {distance > 0 ? `${Math.round(distance)} m` : "pick entry and exit"}
+        </span>
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -102,6 +129,10 @@ export default function ManualEntry({
               </button>
             ))}
           </div>
+          <p className="mt-1 text-xs text-slate-500">
+            Floating doubles as a current measurement — it calibrates the
+            current speed below.
+          </p>
         </div>
       </div>
 
@@ -111,8 +142,8 @@ export default function ManualEntry({
           const from = BASEL_SPOTS.find((s) => s.id === entry)!.name;
           const to = BASEL_SPOTS.find((s) => s.id === exit)!.name;
           onSubmit(
-            // Manual mode assumes a straight downstream swim, so the full
-            // current acts along the route (alignment = 1).
+            // Self-reported swims are assumed to follow the river line, so
+            // the full current acts along the route (alignment = 1).
             { distanceMeters: distance, elapsedSeconds: mins * 60, routeAlignment: 1 },
             effort,
             `${from} → ${to}`
@@ -120,7 +151,7 @@ export default function ManualEntry({
         }}
         className="w-full rounded-lg bg-sky-600 p-3 font-medium text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Calculate
+        Calculate my swim
       </button>
     </div>
   );

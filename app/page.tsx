@@ -3,26 +3,31 @@
 import { useMemo, useState } from "react";
 import CurrentControls from "@/components/CurrentControls";
 import GpxUpload from "@/components/GpxUpload";
-import ManualEntry from "@/components/ManualEntry";
+import LogSwim from "@/components/LogSwim";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import RouteMap from "@/components/RouteMap";
+import StravaLink from "@/components/StravaLink";
 import { correctForCurrent } from "@/lib/current";
 import { formatDistance, formatDuration } from "@/lib/format";
+import { SWIM_POSITIONS } from "@/lib/hydro";
 import { RIVER_PRESETS } from "@/lib/rivers";
 import type { ParsedTrack, SwimInput } from "@/lib/types";
 
-type Mode = "gpx" | "manual";
+type Mode = "log" | "gpx";
 
 export default function Home() {
-  const [mode, setMode] = useState<Mode>("gpx");
+  const [mode, setMode] = useState<Mode>("log");
   const [track, setTrack] = useState<ParsedTrack | null>(null);
   const [trackLabel, setTrackLabel] = useState<string>("");
-  const [manualInput, setManualInput] = useState<SwimInput | null>(null);
-  const [manualLabel, setManualLabel] = useState<string>("");
+  const [logInput, setLogInput] = useState<SwimInput | null>(null);
+  const [logLabel, setLogLabel] = useState<string>("");
   const [riverId, setRiverId] = useState(RIVER_PRESETS[0].id);
   const [currentMs, setCurrentMs] = useState(RIVER_PRESETS[0].defaultCurrentMs);
+  const [positionId, setPositionId] = useState("typical");
 
   const river = RIVER_PRESETS.find((r) => r.id === riverId)!;
+  const positionFactor =
+    SWIM_POSITIONS.find((p) => p.id === positionId)?.factor ?? 1;
 
   const input: SwimInput | null =
     mode === "gpx"
@@ -31,14 +36,16 @@ export default function Home() {
           elapsedSeconds: track.elapsedSeconds,
           routeAlignment: track.routeAlignment,
         }
-      : manualInput;
+      : logInput;
 
+  // The controls hold the base (typical-line) current; where the swimmer
+  // actually was in the channel scales it before the correction runs.
   const result = useMemo(
-    () => (input ? correctForCurrent(input, currentMs) : null),
-    [input, currentMs]
+    () => (input ? correctForCurrent(input, currentMs * positionFactor) : null),
+    [input, currentMs, positionFactor]
   );
 
-  const activeLabel = mode === "gpx" ? trackLabel : manualLabel;
+  const activeLabel = mode === "gpx" ? trackLabel : logLabel;
 
   return (
     <main className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8">
@@ -47,19 +54,19 @@ export default function Home() {
           🌊 CurrentCorrector
         </h1>
         <p className="mt-2 text-sm text-slate-400">
-          How much of your river swim was <em>you</em>, and how much was the
-          river? Upload a GPS track (or log a Basel Rhine swim by entry/exit
-          point) and split your distance into swimmer effort and current
-          assist.
+          For Basel Rhine swimmers: how much of your swim was <em>you</em>,
+          and how much was the river? Log your swim by entry/exit spot — or
+          upload a GPS track — and split the distance into swimmer effort and
+          current assist, using today&apos;s actual flow.
         </p>
       </header>
 
-      {/* Input mode tabs */}
+      {/* Input mode tabs — self-reported first: trackers struggle in the Rhine */}
       <div className="flex overflow-hidden rounded-xl border border-slate-700">
         {(
           [
-            ["gpx", "Upload GPX"],
-            ["manual", "Basel: log by entry/exit"],
+            ["log", "Log a swim (Basel)"],
+            ["gpx", "GPX file / Strava link"],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -76,25 +83,33 @@ export default function Home() {
         ))}
       </div>
 
-      {mode === "gpx" ? (
-        <GpxUpload
-          onTrack={(t, name) => {
-            setTrack(t);
-            setTrackLabel(t.name ?? name);
-          }}
-        />
-      ) : (
-        <ManualEntry
+      {mode === "log" ? (
+        <LogSwim
           onSubmit={(swimInput, effort, label) => {
-            setManualInput(swimInput);
-            setManualLabel(label);
+            setLogInput(swimInput);
+            setLogLabel(label);
             if (effort === "float") {
               // A float is a free current measurement: the swimmer added no
-              // speed, so GPS speed ≈ current speed. Calibrate the slider.
-              setCurrentMs(swimInput.distanceMeters / swimInput.elapsedSeconds);
+              // speed, so drift speed ≈ current at their line in the channel.
+              // Store the equivalent base (typical-line) current.
+              setCurrentMs(
+                swimInput.distanceMeters /
+                  swimInput.elapsedSeconds /
+                  positionFactor
+              );
             }
           }}
         />
+      ) : (
+        <div className="space-y-4">
+          <GpxUpload
+            onTrack={(t, name) => {
+              setTrack(t);
+              setTrackLabel(t.name ?? name);
+            }}
+          />
+          <StravaLink />
+        </div>
       )}
 
       {input && (
@@ -119,17 +134,30 @@ export default function Home() {
             onRiverChange={setRiverId}
             currentMs={currentMs}
             onCurrentChange={setCurrentMs}
+            positionId={positionId}
+            onPositionChange={setPositionId}
           />
 
-          {result && <ResultsDashboard result={result} riverName={river.name} />}
+          {result && (
+            <ResultsDashboard
+              result={result}
+              riverName={river.name}
+              isGps={mode === "gpx"}
+            />
+          )}
         </>
       )}
 
-      <footer className="border-t border-slate-800 pt-4 text-xs text-slate-500">
-        Estimates use a simplified constant-current model — see the README for
-        assumptions and where real hydrological data (BAFU Rhein–Basel gauge)
-        could plug in. Swim safely: use a swim buoy, keep clear of shipping,
-        and exit before the harbor.
+      <footer className="space-y-1 border-t border-slate-800 pt-4 text-xs text-slate-500">
+        <p>
+          Estimates use a simplified current model — see the README for
+          assumptions and how live data.bs.ch flow data plugs in.
+        </p>
+        <p>
+          Official rules (bs.ch): swim only below 1&apos;500 m³/s and above
+          18 °C water, no swimming in harbor areas or at the Birsfelden lock,
+          no jumping from bridges, use a swim bag (not tied to your body).
+        </p>
       </footer>
     </main>
   );
