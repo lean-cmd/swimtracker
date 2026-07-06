@@ -4,7 +4,8 @@ import { formatDistance, formatDuration, formatPace } from "./format";
 /** Plain-text summary suitable for pasting into a Strava activity description. */
 export function buildStravaSummary(
   result: CorrectionResult,
-  riverName: string
+  riverName: string,
+  kcal?: number
 ): string {
   const lines = [
     `🌊 CurrentCorrector — ${riverName}`,
@@ -21,6 +22,9 @@ export function buildStravaSummary(
       `Swimmer effort: ${formatDistance(result.swimmerDistanceMeters)} through the water`,
       `Still-water equivalent pace: ${formatPace(result.stillWaterPaceSecPer100m!)}`
     );
+  }
+  if (kcal !== undefined) {
+    lines.push(`Energy: ≈ ${Math.round(kcal)} kcal (effort-based estimate)`);
   }
   lines.push(``, `(experimental estimate — simplified current model)`);
   return lines.join("\n");

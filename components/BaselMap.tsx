@@ -173,7 +173,7 @@ export default function BaselMap({
       </div>
 
       {/* legend */}
-      <ol className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs sm:grid-cols-2">
+      <ol className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
         {BASEL_SPOTS.map((s, i) => {
           const isEntry = s.id === entryId;
           const isExit = s.id === exitId;

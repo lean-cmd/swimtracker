@@ -6,6 +6,7 @@ import {
   FLOW_WARNING_M3S,
   HIGH_FLOW_M3S,
   SWIM_POSITIONS,
+  describeCurrent,
   fetchLiveFlow,
   loadCachedFlow,
   midstreamCurrentFromDischarge,
@@ -19,7 +20,7 @@ import { kmhToMs, msToKmh } from "@/lib/format";
  *   1. live reading from data.bs.ch (dataset 100089)
  *   2. last successful reading cached in this browser (< 7 days old)
  *   3. seasonal monthly average for the Rhine at Basel
- * Manual entry exists only under "Advanced".
+ * All technical controls live behind the "Expert settings" disclosure.
  */
 type FlowState =
   | { status: "loading" }
@@ -87,69 +88,83 @@ export default function CurrentControls({
   }, [isBasel, applyDischarge]);
 
   const q =
-    flow.status === "loading" ? null : (flow as Exclude<FlowState, { status: "loading" }>).q;
-  const midstream = q !== null ? midstreamCurrentFromDischarge(q) : null;
+    flow.status === "loading"
+      ? null
+      : (flow as Exclude<FlowState, { status: "loading" }>).q;
+  const positionFactor =
+    SWIM_POSITIONS.find((p) => p.id === positionId)?.factor ?? 1;
+  const atYourLine = currentMs * positionFactor;
+
+  const sourceNote =
+    flow.status === "live"
+      ? "measured just now"
+      : flow.status === "cached"
+        ? `last reading, ${new Date((flow as { fetchedAt: number }).fetchedAt).toLocaleDateString()}`
+        : flow.status === "seasonal"
+          ? `typical for ${(flow as { month: string }).month}`
+          : flow.status === "manual"
+            ? "set by hand"
+            : "";
 
   const inputClass =
     "w-full rounded-lg border border-slate-600 bg-slate-800 p-2.5 text-sm text-slate-100";
 
   return (
-    <div className="space-y-3 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
-      <h3 className="text-sm font-medium text-slate-200">River & current</h3>
+    <div className="space-y-4 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+      <h3 className="text-base font-semibold text-slate-100">
+        The river today
+      </h3>
 
       {isBasel ? (
         <div className="space-y-2">
-          <div className="rounded-lg border border-slate-600/60 bg-slate-900/40 p-3 text-sm">
-            {flow.status === "loading" && (
-              <span className="text-slate-400">
-                Getting today&apos;s Rhine flow…
+          <div className="rounded-lg border border-slate-600/60 bg-slate-900/40 p-4">
+            {q === null ? (
+              <span className="text-base text-slate-400">
+                Checking the Rhine…
               </span>
-            )}
-            {q !== null && (
-              <span className="text-slate-200">
-                🌊 Rhine flow: <strong>{Math.round(q)} m³/s</strong> →
-                midstream ≈ <strong>{midstream!.toFixed(2)} m/s</strong>{" "}
-                <span className="text-xs text-slate-500">
-                  {flow.status === "live" &&
-                    `(live from data.bs.ch${"when" in flow && flow.when ? `, ${flow.when}` : ""})`}
-                  {flow.status === "cached" &&
-                    `(last known reading, ${new Date(
-                      (flow as { fetchedAt: number }).fetchedAt
-                    ).toLocaleDateString()})`}
-                  {flow.status === "seasonal" &&
-                    `(typical ${(flow as { month: string }).month} value — live data unavailable)`}
-                  {flow.status === "manual" && "(set manually)"}
-                </span>
-              </span>
+            ) : (
+              <>
+                <div className="text-lg text-slate-100">
+                  🌊 The current is{" "}
+                  <strong>{describeCurrent(atYourLine)}</strong> today —
+                  about{" "}
+                  <strong>
+                    {(atYourLine * 3.6).toFixed(1).replace(/\.0$/, "")} km/h
+                  </strong>{" "}
+                  where you swim.
+                </div>
+                <div className="mt-1 text-sm text-slate-500">
+                  Rhine flow {Math.round(q)} m³/s ({sourceNote}) ·{" "}
+                  {atYourLine.toFixed(2)} m/s
+                </div>
+              </>
             )}
           </div>
 
           {q !== null && q > FLOW_WARNING_M3S && (
-            <p className="rounded-md border border-red-500/50 bg-red-500/10 p-2 text-xs text-red-300">
-              ⚠️ {Math.round(q)} m³/s — the canton recommends swimming only
-              below 1&apos;500 m³/s (strong currents, driftwood). Estimates are
-              also less reliable up here.
+            <p className="rounded-md border border-red-500/50 bg-red-500/10 p-3 text-base text-red-300">
+              ⚠️ The river is very high today. The canton advises{" "}
+              <strong>not to swim</strong> above 1&apos;500 m³/s.
             </p>
           )}
           {q !== null && q > HIGH_FLOW_M3S && q <= FLOW_WARNING_M3S && (
-            <p className="text-xs text-amber-300">
-              High flow — the current estimate is extrapolated, treat results
-              with extra caution.
+            <p className="text-sm text-amber-300">
+              High water — treat these numbers with extra caution.
             </p>
           )}
         </div>
       ) : (
-        <p className="text-xs text-slate-400">{preset.description}</p>
+        <p className="text-sm text-slate-400">{preset.description}</p>
       )}
 
-      <div className="block text-sm text-slate-300">
+      <div className="block text-base text-slate-200">
         Where did you mostly swim?
-        <div className="mt-1 grid grid-cols-2 gap-1.5">
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {SWIM_POSITIONS.map((p) => (
             <button
               key={p.id}
               onClick={() => onPositionChange(p.id)}
-              className={`rounded-lg border p-2 text-xs sm:text-sm ${
+              className={`rounded-lg border p-3 text-base ${
                 positionId === p.id
                   ? "border-sky-500 bg-sky-600 font-medium text-white"
                   : "border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700"
@@ -159,17 +174,12 @@ export default function CurrentControls({
             </button>
           ))}
         </div>
-        <p className="mt-1 text-xs text-slate-500">
-          The bank runs slower than midstream (Kleinbasel is the inside of the
-          bend). Your pick scales the current:{" "}
-          {SWIM_POSITIONS.map((p) => `×${p.factor}`).join(" / ")}.
-        </p>
       </div>
 
-      {/* advanced: override flow or current directly, other rivers */}
-      <details className="group">
-        <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-200">
-          Advanced: set flow or current manually / other river
+      {/* everything technical hides here */}
+      <details>
+        <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-300">
+          Expert settings
         </summary>
         <div className="mt-3 space-y-3">
           {isBasel && (
@@ -261,6 +271,10 @@ export default function CurrentControls({
             className="w-full accent-sky-500"
             aria-label="Current speed slider"
           />
+          <p className="text-xs text-slate-500">
+            Shore factors: {SWIM_POSITIONS.map((p) => `×${p.factor}`).join(" / ")}{" "}
+            on the midstream speed.
+          </p>
         </div>
       </details>
     </div>

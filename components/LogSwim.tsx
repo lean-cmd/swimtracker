@@ -42,11 +42,11 @@ export default function LogSwim({
   const valid = distance > 0 && Number.isFinite(mins) && mins > 0;
 
   const selectClass =
-    "w-full rounded-lg border border-slate-600 bg-slate-800 p-2.5 text-sm text-slate-100";
+    "w-full rounded-lg border border-slate-600 bg-slate-800 p-3 text-base text-slate-100";
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-400">
+      <p className="text-base text-slate-400">
         Tap your entry spot, then your exit spot (★ = the classics). Exit at
         Dreirosenbrücke at the latest — swimming in the harbour is forbidden.
       </p>
@@ -54,7 +54,7 @@ export default function LogSwim({
       <BaselMap entryId={entry || null} exitId={exit || null} onPick={pickSpot} />
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm text-slate-300">
+        <label className="block text-base text-slate-300">
           Entry point
           <select
             value={entry}
@@ -70,7 +70,7 @@ export default function LogSwim({
             ))}
           </select>
         </label>
-        <label className="block text-sm text-slate-300">
+        <label className="block text-base text-slate-300">
           Exit point
           <select
             value={exit}
@@ -88,7 +88,7 @@ export default function LogSwim({
         </label>
       </div>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-sm text-slate-400">
         Estimated swim distance:{" "}
         <span className="font-medium text-slate-200">
           {distance > 0 ? `${Math.round(distance)} m` : "pick entry and exit"}
@@ -106,7 +106,7 @@ export default function LogSwim({
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm text-slate-300">
+        <label className="block text-base text-slate-300">
           Time in the water (minutes)
           <input
             type="number"
@@ -117,7 +117,7 @@ export default function LogSwim({
             className={`mt-1 ${selectClass}`}
           />
         </label>
-        <div className="block text-sm text-slate-300">
+        <div className="block text-base text-slate-300">
           Effort
           <div className="mt-1 flex overflow-hidden rounded-lg border border-slate-600">
             {(
@@ -129,7 +129,7 @@ export default function LogSwim({
               <button
                 key={value}
                 onClick={() => setEffort(value)}
-                className={`flex-1 p-2.5 text-sm ${
+                className={`flex-1 p-3 text-base ${
                   effort === value
                     ? "bg-sky-600 font-medium text-white"
                     : "bg-slate-800 text-slate-300 hover:bg-slate-700"
@@ -159,7 +159,7 @@ export default function LogSwim({
             `${from} → ${to}`
           );
         }}
-        className="w-full rounded-lg bg-sky-600 p-3 font-medium text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
+        className="w-full rounded-lg bg-sky-600 p-4 text-lg font-semibold text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Calculate my swim
       </button>

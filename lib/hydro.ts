@@ -32,11 +32,18 @@ export interface SwimPosition {
 }
 
 export const SWIM_POSITIONS: SwimPosition[] = [
-  { id: "kleinbasel", label: "Close to Kleinbasel bank", factor: 0.65 },
-  { id: "grossbasel", label: "Close to Grossbasel bank", factor: 0.75 },
-  { id: "corridor", label: "Normal swimmer corridor", factor: 0.85 },
-  { id: "middle", label: "Middle of the river", factor: 1.0 },
+  { id: "kleinbasel", label: "Near the Kleinbasel shore", factor: 0.65 },
+  { id: "grossbasel", label: "Near the Grossbasel shore", factor: 0.75 },
+  { id: "corridor", label: "In the usual swim lane", factor: 0.85 },
+  { id: "middle", label: "In the middle of the river", factor: 1.0 },
 ];
+
+/** Plain-language description of the current for the status line. */
+export function describeCurrent(ms: number): string {
+  if (ms < 0.8) return "gentle";
+  if (ms < 1.5) return "medium";
+  return "strong";
+}
 
 /**
  * Discharge (m³/s) → estimated midstream surface velocity (m/s) at Basel.

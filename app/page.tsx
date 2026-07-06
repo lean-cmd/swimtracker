@@ -8,6 +8,7 @@ import ResultsDashboard from "@/components/ResultsDashboard";
 import RouteMap from "@/components/RouteMap";
 import StravaLink from "@/components/StravaLink";
 import { correctForCurrent } from "@/lib/current";
+import { DEFAULT_WEIGHT_KG } from "@/lib/energy";
 import { formatDistance, formatDuration } from "@/lib/format";
 import { SWIM_POSITIONS } from "@/lib/hydro";
 import { RIVER_PRESETS } from "@/lib/rivers";
@@ -24,6 +25,7 @@ export default function Home() {
   const [riverId, setRiverId] = useState(RIVER_PRESETS[0].id);
   const [currentMs, setCurrentMs] = useState(RIVER_PRESETS[0].defaultCurrentMs);
   const [positionId, setPositionId] = useState("corridor");
+  const [weightKg, setWeightKg] = useState(DEFAULT_WEIGHT_KG);
 
   const river = RIVER_PRESETS.find((r) => r.id === riverId)!;
   const positionFactor =
@@ -53,11 +55,10 @@ export default function Home() {
         <h1 className="text-3xl font-bold tracking-tight text-slate-50">
           🌊 CurrentCorrector
         </h1>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-base text-slate-400">
           For Basel Rhine swimmers: how much of your swim was <em>you</em>,
-          and how much was the river? Log your swim by entry/exit spot — or
-          upload a GPS track — and split the distance into swimmer effort and
-          current assist, using today&apos;s actual flow.
+          and how much was the river? Pick where you got in and out, and
+          we&apos;ll do the rest — using today&apos;s actual river conditions.
         </p>
       </header>
 
@@ -72,7 +73,7 @@ export default function Home() {
           <button
             key={value}
             onClick={() => setMode(value)}
-            className={`flex-1 p-3 text-sm font-medium ${
+            className={`flex-1 p-4 text-base font-medium ${
               mode === value
                 ? "bg-slate-700 text-white"
                 : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
@@ -113,17 +114,11 @@ export default function Home() {
       )}
 
       {input && (
-        <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-300">
+        <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 text-base text-slate-300">
           <span className="font-medium text-slate-100">{activeLabel}</span>
           {" · "}
           {formatDistance(input.distanceMeters)} in{" "}
           {formatDuration(input.elapsedSeconds)}
-          {mode === "gpx" && input.routeAlignment < 0.98 && (
-            <span className="text-slate-400">
-              {" "}
-              · route alignment {(input.routeAlignment * 100).toFixed(0)}%
-            </span>
-          )}
         </div>
       )}
 
@@ -144,6 +139,8 @@ export default function Home() {
           result={result}
           riverName={river.name}
           isGps={mode === "gpx"}
+          weightKg={weightKg}
+          onWeightChange={setWeightKg}
         />
       )}
 

@@ -81,10 +81,24 @@ lock, and a striped stub for the prohibited harbour below Dreirosenbrücke.
 Birskopf and Rheinbad Breite are still selectable (people do start there)
 but are flagged ⚠️ as outside the recommended area.
 
-**Output dashboard** — GPS distance, elapsed time, average GPS speed,
-current-assisted distance, swimmer-powered distance, speed through water,
-effort-equivalent still-water pace, and a "current boost" percentage — plus a
-copy-paste summary for your Strava activity description.
+**Output dashboard** — leads with one plain-language sentence ("You swam
+456 m with your own power — the river carried you the other 1.4 km…"),
+then the numbers: distance, time, average speed, river's share vs your
+share, speed through water, pool-equivalent pace, current-boost %, and an
+**energy estimate in kcal** — plus a copy-paste summary for your Strava
+activity description.
+
+Calories are MET-based (`lib/energy.ts`): the MET is picked from your speed
+*through the water* (drifting with the current is not exercise, whatever
+the GPS pace claims), times your weight (single input, default 75 kg) and
+time. Note that a Strava GPX export contains GPS points, timestamps and
+sometimes heart rate — but never calories, which is why the app estimates
+them itself.
+
+**Senior-friendly by design** — large type and buttons, one question at a
+time, no jargon on the main screen. Everything technical (manual flow
+override, m/s / km/h fields, current slider, other rivers) lives behind a
+single small "Expert settings" link.
 
 ## The current model (and its limits)
 
