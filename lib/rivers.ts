@@ -42,7 +42,7 @@ export const RIVER_PRESETS: RiverPreset[] = [
  * (OpenStreetMap waterway geometry) and use the exact marked exit stairs
  * from the canton's Rhine page (bs.ch → Parks und Rhein → Rhein).
  * Swimmers must leave the water at Dreirosenbrücke at the latest — the
- * harbor/shipping area starts below it.
+ * harbour/shipping area starts below it.
  */
 export interface RiverSpot {
   id: string;
@@ -51,11 +51,18 @@ export interface RiverSpot {
   lon: number;
   /** Marks the classic, most-used spots for quick picking. */
   popular?: boolean;
+  /**
+   * True when the spot lies outside the official "recommended swimming
+   * area" from the canton's zone map (teal corridor roughly
+   * Schwarzwaldbrücke → Dreirosenbrücke; upstream of Schwarzwaldbrücke is
+   * danger/harbour zone toward the Birsfelden lock).
+   */
+  outsideRecommended?: boolean;
 }
 
 export const BASEL_SPOTS: RiverSpot[] = [
-  { id: "birskopf", name: "Birskopf", lat: 47.5519, lon: 7.6247, popular: true },
-  { id: "breite", name: "Rheinbad Breite (St. Alban)", lat: 47.554, lon: 7.6155, popular: true },
+  { id: "birskopf", name: "Birskopf", lat: 47.5519, lon: 7.6247, popular: true, outsideRecommended: true },
+  { id: "breite", name: "Rheinbad Breite (St. Alban)", lat: 47.554, lon: 7.6155, popular: true, outsideRecommended: true },
   { id: "schwarzwaldbruecke", name: "Schwarzwaldbrücke", lat: 47.5551, lon: 7.6123 },
   { id: "tinguely", name: "Museum Tinguely / Solitude", lat: 47.5571, lon: 7.6056, popular: true },
   { id: "wettsteinbruecke", name: "Wettsteinbrücke", lat: 47.5578, lon: 7.5962 },
@@ -64,6 +71,9 @@ export const BASEL_SPOTS: RiverSpot[] = [
   { id: "johanniterbruecke", name: "Johanniterbrücke", lat: 47.5648, lon: 7.5851 },
   { id: "dreirosen", name: "Dreirosenbrücke (last exit!)", lat: 47.5688, lon: 7.5788, popular: true },
 ];
+
+/** Index of the first spot of the official recommended corridor. */
+export const RECOMMENDED_FROM = 2; // schwarzwaldbruecke
 
 export const spotIndex = (id: string) =>
   BASEL_SPOTS.findIndex((s) => s.id === id);

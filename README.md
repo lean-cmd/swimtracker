@@ -32,7 +32,7 @@ struggle in the Rhine (GPS drops underwater, optical HR fails in water):
 - Tap entry and exit spots on a schematic Basel map — Birskopf, Rheinbad
   Breite, Schwarzwaldbrücke, Museum Tinguely/Solitude (where the guided
   Tuesday swims start), Wettsteinbrücke, Mittlere Brücke, Kaserne,
-  Johanniterbrücke, Dreirosenbrücke (the last legal exit before the harbor).
+  Johanniterbrücke, Dreirosenbrücke (the last legal exit before the harbour).
   ★ marks the classics.
 - Enter your time in the water and whether you **swam** or **floated**.
 - Floating is treated as a free current measurement: your drift speed *is*
@@ -52,15 +52,30 @@ struggle in the Rhine (GPS drops underwater, optical HR fails in water):
 (e.g. ~613 m³/s on a dry July day vs ~1,050 m³/s annual mean), and the
 current also depends on where you swim in the channel:
 
-- Type today's flow (m³/s) from the BachApp, or hit **Fetch live** to pull
-  the latest value from the Basel open data portal
-  ([dataset 100246](https://data.bs.ch/explore/assets/100246/)) straight
-  from your browser.
-- Current speed is derived from flow via a rough cross-section estimate
-  (see `lib/hydro.ts`), then scaled by your line in the river:
-  close to shore ×0.7, typical swim line ×1.0, mid-river ×1.15.
+- On load the app automatically fetches the latest discharge from the Basel
+  open data portal, dataset
+  [100089 — "Rhein Wasserstand, Pegel und Abfluss"](https://data.bs.ch/explore/dataset/100089/)
+  (~5-minute values from BAFU station 2289, Rhein–Basel/Rheinhalle),
+  straight from your browser. If the fetch fails, type the value from the
+  BachApp.
+- Discharge maps to an estimated **midstream surface velocity** via an
+  empirical lookup (see `lib/hydro.ts`): <500 m³/s → ~0.8 m/s, 500–700 →
+  1.0–1.2, 700–900 → 1.2–1.4, 900–1100 → 1.4–1.6, 1100–1400 → 1.6–1.9,
+  above 1400 extrapolated with a low-confidence flag.
+- Then "Where did you mostly swim?" scales it: close to Kleinbasel bank
+  ×0.65 (inside of the bend), close to Grossbasel bank ×0.75, normal
+  swimmer corridor ×0.85, middle of the river ×1.0.
 - Above 1'500 m³/s the app shows the canton's official warning — that's the
   bs.ch guidance threshold for swimming at all.
+- Results carry an explicit **"experimental estimate"** badge — this is a
+  model, not scientific truth.
+
+**Official zones on the map** — the in-app map mirrors the canton's zone
+map: teal for the recommended swimming area (Schwarzwaldbrücke →
+Dreirosenbrücke), red for the danger zone upstream toward the Birsfelden
+lock, and a striped stub for the prohibited harbour below Dreirosenbrücke.
+Birskopf and Rheinbad Breite are still selectable (people do start there)
+but are flagged ⚠️ as outside the recommended area.
 
 **Output dashboard** — GPS distance, elapsed time, average GPS speed,
 current-assisted distance, swimmer-powered distance, speed through water,
@@ -75,8 +90,10 @@ The MVP model is deliberately simple — averages plus vector algebra:
 speed over ground = swimmer speed through water + current speed along route
 ```
 
-- Default current: **1.5 m/s** downstream for the Basel Rhine preset,
-  adjustable in m/s or km/h.
+- The midstream current comes from today's discharge via the lookup table
+  above (falling back to 1.1 m/s ≈ typical summer flow), scaled by your
+  position in the channel; it stays adjustable in m/s or km/h under
+  "Advanced".
 - Current direction is assumed to follow the straight line between the first
   and last GPS points. A *route alignment* factor (distance-weighted cosine
   between each track segment and that line) projects the current onto the
@@ -91,12 +108,13 @@ The simplifications are marked with `SIMPLIFICATION:` comments in the code:
 
 | Simplification | Where | Real-data upgrade |
 | --- | --- | --- |
-| Flow → speed via fixed cross-section (v ≈ 1.3·Q/1000 m²) | [`lib/hydro.ts`](lib/hydro.ts) | Calibrate a stage–velocity rating curve against the [BAFU station 2289](https://www.hydrodaten.admin.ch/en/2289.html) (Rhein–Basel, Rheinhalle) measurements. |
-| Cross-channel factors (shore ×0.7 / typical ×1.0 / middle ×1.15) | [`lib/hydro.ts`](lib/hydro.ts) | Real velocity profiles from bathymetry or ADCP measurements. |
+| Empirical Q→velocity lookup table | [`lib/hydro.ts`](lib/hydro.ts) | Calibrate against cross-section/ADCP data or repeated swims of known routes; cross-check the [BAFU station 2289](https://www.hydrodaten.admin.ch/en/2289.html) measurements. |
+| Cross-channel factors (Kleinbasel ×0.65 / Grossbasel ×0.75 / corridor ×0.85 / middle ×1.0) | [`lib/hydro.ts`](lib/hydro.ts) | Real velocity profiles; infer position from GPS distance to the riverbank. |
 | Straight-line flow direction | [`lib/gpx.ts`](lib/gpx.ts) | Follow the river centerline (OpenStreetMap `waterway` geometry) and project the current along the local flow direction at every point. |
-| Whole-swim averaging | [`lib/current.ts`](lib/current.ts) | Apply the same formula segment-by-segment to expose intervals (sprint vs. drift phases). |
+| Whole-swim averaging, no GPX smoothing | [`lib/current.ts`](lib/current.ts) | Smooth the track, then apply the same formula segment-by-segment to expose intervals (sprint vs. drift phases). |
 | Straight-hop spot distances, approximate spot coordinates | [`lib/rivers.ts`](lib/rivers.ts) | Measure along the actual river centerline between the marked entry/exit stairs. |
-| Defensive field-name guessing on dataset 100246 | [`lib/hydro.ts`](lib/hydro.ts) | Pin the exact field once verified against the live API (this sandbox couldn't reach data.bs.ch). |
+| Defensive field-name guessing on dataset 100089 | [`lib/hydro.ts`](lib/hydro.ts) | Pin the exact field once verified against the live API (this sandbox couldn't reach data.bs.ch). |
+| No forecast | — | Dataset [100271 "Vorhersagen Rhein"](https://data.bs.ch/explore/dataset/100271/) for a "should I swim today?" view. |
 
 ### Official Basel rules baked into the UI
 
@@ -106,7 +124,7 @@ From the canton's Rhine page
 - Swim only when discharge is **below 1'500 m³/s** (level < 6.50 m) — the
   app warns above that.
 - Swim only at water temperature above 18 °C and good water quality.
-- **No swimming in harbor areas** or around the Birsfelden lock — hence
+- **No swimming in harbour areas** or around the Birsfelden lock — hence
   Dreirosenbrücke is the last exit in the spot list.
 - No jumping from bridges; no air mattresses/floating toys; swim bag
   (Wickelfisch) recommended for visibility but not tied to your body.

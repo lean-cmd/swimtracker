@@ -32,7 +32,12 @@ export default function ResultsDashboard({
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-slate-100">Results</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-slate-100">Results</h2>
+        <span className="rounded-full border border-slate-600 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+          experimental estimate
+        </span>
+      </div>
 
       {result.floating && (
         <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-amber-200">

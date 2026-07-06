@@ -1,13 +1,15 @@
 "use client";
 
-import { BASEL_SPOTS, spotIndex } from "@/lib/rivers";
+import { BASEL_SPOTS, RECOMMENDED_FROM, spotIndex } from "@/lib/rivers";
 
 /**
- * Tappable schematic map of the Basel Rhine swim stretch.
- * The river band is drawn through the spot chain (upstream → downstream);
- * dependency-free SVG, same city-scale projection as RouteMap.
- * Spots are numbered on the map with a legend below — full names on the
- * map itself collide at phone sizes.
+ * Tappable schematic map of the Basel Rhine swim stretch, colored after the
+ * canton's official zone map:
+ *   teal  = recommended swimming area (Schwarzwaldbrücke → Dreirosenbrücke)
+ *   red   = danger zone (upstream stretch toward the Birsfelden lock)
+ *   striped = prohibited harbour area (below Dreirosenbrücke)
+ * Dependency-free SVG; spots are numbered with a legend below — full names
+ * on the map itself collide at phone sizes.
  */
 export default function BaselMap({
   entryId,
@@ -28,7 +30,7 @@ export default function BaselMap({
 
   const W = 640;
   const H = 340;
-  const PAD = 36;
+  const PAD = 46;
   const spanX = (maxLon - minLon) * lonScale;
   const spanY = maxLat - minLat;
   const scale = Math.min((W - 2 * PAD) / spanX, (H - 2 * PAD) / spanY);
@@ -41,14 +43,29 @@ export default function BaselMap({
   });
 
   const pts = BASEL_SPOTS.map((s) => project(s.lat, s.lon));
-  // Smooth river band through the spots via quadratic midpoint curves.
-  let river = `M${pts[0].x},${pts[0].y}`;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i].x + pts[i + 1].x) / 2;
-    const my = (pts[i].y + pts[i + 1].y) / 2;
-    river += ` Q${pts[i].x},${pts[i].y} ${mx},${my}`;
-  }
-  river += ` L${pts[pts.length - 1].x},${pts[pts.length - 1].y}`;
+
+  // Smooth path through a sub-chain of points via quadratic midpoint curves.
+  const smoothPath = (sub: { x: number; y: number }[]) => {
+    let d = `M${sub[0].x},${sub[0].y}`;
+    for (let i = 1; i < sub.length - 1; i++) {
+      const mx = (sub[i].x + sub[i + 1].x) / 2;
+      const my = (sub[i].y + sub[i + 1].y) / 2;
+      d += ` Q${sub[i].x},${sub[i].y} ${mx},${my}`;
+    }
+    d += ` L${sub[sub.length - 1].x},${sub[sub.length - 1].y}`;
+    return d;
+  };
+
+  const dangerPath = smoothPath(pts.slice(0, RECOMMENDED_FROM + 1));
+  const recommendedPath = smoothPath(pts.slice(RECOMMENDED_FROM));
+
+  // Harbour stub: continue past the last spot in the same direction.
+  const last = pts[pts.length - 1];
+  const prev = pts[pts.length - 2];
+  const dx = last.x - prev.x;
+  const dy = last.y - prev.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const harbour = { x: last.x + (dx / len) * 52, y: last.y + (dy / len) * 52 };
 
   const entryIdx = entryId ? spotIndex(entryId) : -1;
   const exitIdx = exitId ? spotIndex(exitId) : -1;
@@ -61,9 +78,28 @@ export default function BaselMap({
         role="img"
         aria-label="Basel Rhine map with entry and exit spots"
       >
-        {/* river */}
-        <path d={river} fill="none" stroke="#1e3a5f" strokeWidth={28} strokeLinecap="round" strokeLinejoin="round" />
-        <path d={river} fill="none" stroke="#2563eb" strokeWidth={20} strokeLinecap="round" strokeLinejoin="round" opacity={0.45} />
+        {/* danger zone upstream of the recommended corridor */}
+        <path d={dangerPath} fill="none" stroke="#7f1d1d" strokeWidth={26} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={dangerPath} fill="none" stroke="#ef4444" strokeWidth={18} strokeLinecap="round" strokeLinejoin="round" opacity={0.35} />
+        {/* recommended swimming area */}
+        <path d={recommendedPath} fill="none" stroke="#134e4a" strokeWidth={26} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={recommendedPath} fill="none" stroke="#14b8a6" strokeWidth={18} strokeLinecap="round" strokeLinejoin="round" opacity={0.5} />
+        {/* prohibited harbour below Dreirosenbrücke */}
+        <line
+          x1={last.x}
+          y1={last.y}
+          x2={harbour.x}
+          y2={harbour.y}
+          stroke="#f59e0b"
+          strokeWidth={18}
+          strokeLinecap="round"
+          strokeDasharray="7 7"
+          opacity={0.8}
+        />
+        <text x={harbour.x + 6} y={harbour.y + 20} fill="#f59e0b" fontSize={12} fontWeight={600}>
+          ⚓ harbour
+        </text>
+
         {/* selected stretch */}
         {entryIdx >= 0 && exitIdx >= 0 && entryIdx !== exitIdx && (
           <polyline
@@ -121,6 +157,21 @@ export default function BaselMap({
         })}
       </svg>
 
+      {/* zone key, mirroring the official canton map */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-4 rounded-sm bg-teal-500/70" /> recommended
+          swimming area
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-4 rounded-sm bg-red-500/60" /> danger zone
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-4 rounded-sm border border-dashed border-amber-400 bg-amber-400/30" />{" "}
+          harbour — swimming prohibited
+        </span>
+      </div>
+
       {/* legend */}
       <ol className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs sm:grid-cols-2">
         {BASEL_SPOTS.map((s, i) => {
@@ -140,6 +191,7 @@ export default function BaselMap({
               >
                 {i + 1}. {s.popular ? "★ " : ""}
                 {s.name}
+                {s.outsideRecommended ? " ⚠️" : ""}
                 {isEntry ? " — entry" : isExit ? " — exit" : ""}
               </button>
             </li>

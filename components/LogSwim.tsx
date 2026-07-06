@@ -48,7 +48,7 @@ export default function LogSwim({
     <div className="space-y-4">
       <p className="text-sm text-slate-400">
         Tap your entry spot, then your exit spot (★ = the classics). Exit at
-        Dreirosenbrücke at the latest — swimming in the harbor is forbidden.
+        Dreirosenbrücke at the latest — swimming in the harbour is forbidden.
       </p>
 
       <BaselMap entryId={entry || null} exitId={exit || null} onPick={pickSpot} />
@@ -94,6 +94,16 @@ export default function LogSwim({
           {distance > 0 ? `${Math.round(distance)} m` : "pick entry and exit"}
         </span>
       </p>
+
+      {[entry, exit].some(
+        (id) => BASEL_SPOTS.find((s) => s.id === id)?.outsideRecommended
+      ) && (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-300">
+          ⚠️ Part of this stretch lies outside the official recommended
+          swimming area (it starts at Schwarzwaldbrücke) — danger zone toward
+          the Birsfelden lock.
+        </p>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm text-slate-300">

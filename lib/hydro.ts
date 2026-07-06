@@ -1,68 +1,104 @@
 /**
- * Hydrology helpers for the Basel Rhine.
+ * Hydrology for the Basel Rhine.
  *
- * Live data source: Basel-Stadt open data portal (OpenDataSoft),
- * dataset 100246 — Rhine monitoring (flow/discharge, updated continuously):
- * https://data.bs.ch/explore/assets/100246/
+ * Live data: Basel-Stadt open data portal (OpenDataSoft),
+ * dataset 100089 — "Rhein Wasserstand, Pegel und Abfluss", ~5-minute values
+ * measured at the BAFU station Rhein–Basel, Rheinhalle (station 2289).
+ *   Records API (small, latest-first):
+ *   https://data.bs.ch/api/explore/v2.1/catalog/datasets/100089/records
+ *   Full JSON export (whole dataset — avoid in the browser):
+ *   https://data.bs.ch/api/v2/catalog/datasets/100089/exports/json
  *
- * The portal's Explore API v2.1 allows cross-origin requests, so the fetch
- * below runs directly in the swimmer's browser — no backend needed.
+ * Later: dataset 100271 "Vorhersagen Rhein: Wasserstand und Abfluss" for a
+ * "should I swim today?" forecast.
+ *
+ * The portal allows cross-origin requests, so the fetch below runs directly
+ * in the swimmer's browser — no backend needed.
  */
 
-/** Where in the river the swimmer was — current varies across the channel. */
+/**
+ * Where in the river the swimmer was — current varies a lot across the
+ * channel (bank friction, eddies, the outside of the bend runs faster).
+ * Factors are multipliers on the *midstream* surface current.
+ *
+ * SIMPLIFICATION: rough empirical ranges, not measured profiles. The
+ * Kleinbasel bank is the inside of the city bend (slowest); the Grossbasel
+ * side sits toward the outside of the bend (a bit faster near the bank).
+ */
 export interface SwimPosition {
   id: string;
   label: string;
-  /**
-   * Multiplier on the mid-channel-ish base current.
-   * SIMPLIFICATION: real cross-channel velocity profiles depend on bathymetry
-   * and discharge; these factors are rough rules of thumb (slower water near
-   * the bank due to friction, fastest water toward the middle of the channel).
-   */
   factor: number;
 }
 
 export const SWIM_POSITIONS: SwimPosition[] = [
-  { id: "shore", label: "Close to shore", factor: 0.7 },
-  { id: "typical", label: "Typical swim line", factor: 1.0 },
-  { id: "middle", label: "Mid-river", factor: 1.15 },
+  { id: "kleinbasel", label: "Close to Kleinbasel bank", factor: 0.65 },
+  { id: "grossbasel", label: "Close to Grossbasel bank", factor: 0.75 },
+  { id: "corridor", label: "Normal swimmer corridor", factor: 0.85 },
+  { id: "middle", label: "Middle of the river", factor: 1.0 },
 ];
 
 /**
- * Map discharge (m³/s) at Basel to an approximate surface current speed (m/s)
- * on the usual swim line.
+ * Discharge (m³/s) → estimated midstream surface velocity (m/s) at Basel.
  *
- * SIMPLIFICATION: v = Q / A with an effective cross-section of ~1000 m²
- * (≈200 m wide × ≈5 m deep through the city stretch), times ~1.3 because
- * surface water moves faster than the section average. Sanity checks:
- *   ~600 m³/s (dry summer)  → ≈0.8 m/s
- *   ~1050 m³/s (annual mean) → ≈1.4 m/s
- *   ~2000 m³/s (high water)  → ≈2.6 m/s
- * which matches the commonly quoted 1–2.5 m/s range for the Basel stretch.
- * A proper version would use a stage–velocity rating curve calibrated
- * against the BAFU station 2289 measurements.
+ * Piecewise-linear over an empirical lookup:
+ *   Q < 500     → ~0.8
+ *   500–700     → ~1.0–1.2
+ *   700–900     → ~1.2–1.4
+ *   900–1100    → ~1.4–1.6
+ *   1100–1400   → ~1.6–1.9
+ *   > 1400      → extrapolated, low confidence (and the canton says don't
+ *                 swim above 1500 m³/s anyway)
+ *
+ * SIMPLIFICATION: discharge is total river volume, not point velocity — a
+ * proper version would calibrate against cross-section/ADCP measurements or
+ * repeated swims of known routes.
  */
-export function currentFromDischarge(dischargeM3s: number): number {
-  const EFFECTIVE_CROSS_SECTION_M2 = 1000;
-  const SURFACE_FACTOR = 1.3;
-  return (dischargeM3s / EFFECTIVE_CROSS_SECTION_M2) * SURFACE_FACTOR;
+const Q_TO_V: Array<[number, number]> = [
+  [450, 0.8],
+  [500, 1.0],
+  [700, 1.2],
+  [900, 1.4],
+  [1100, 1.6],
+  [1400, 1.9],
+];
+
+export function midstreamCurrentFromDischarge(dischargeM3s: number): number {
+  const q = dischargeM3s;
+  if (q <= Q_TO_V[0][0]) return Q_TO_V[0][1];
+  for (let i = 1; i < Q_TO_V.length; i++) {
+    const [q1, v1] = Q_TO_V[i - 1];
+    const [q2, v2] = Q_TO_V[i];
+    if (q <= q2) return v1 + ((q - q1) / (q2 - q1)) * (v2 - v1);
+  }
+  // Above 1400: extend the last segment's slope, capped at 3 m/s.
+  const [q1, v1] = Q_TO_V[Q_TO_V.length - 2];
+  const [q2, v2] = Q_TO_V[Q_TO_V.length - 1];
+  return Math.min(3, v2 + ((q - q2) * (v2 - v1)) / (q2 - q1));
 }
+
+/** Model confidence drops above this discharge (and swimming is discouraged). */
+export const HIGH_FLOW_M3S = 1400;
+/** Official canton guidance: don't swim above this discharge. */
+export const FLOW_WARNING_M3S = 1500;
 
 export interface LiveFlow {
   dischargeM3s: number;
+  levelM: number | null;
   timestamp: string | null;
 }
 
 const DATA_BS_URL =
-  "https://data.bs.ch/api/explore/v2.1/catalog/datasets/100246/records?order_by=timestamp%20DESC&limit=1";
+  "https://data.bs.ch/api/explore/v2.1/catalog/datasets/100089/records?order_by=timestamp%20DESC&limit=1";
 
 /**
  * Fetch the latest Rhine discharge from data.bs.ch (runs in the browser).
  *
- * Parsing is defensive: field names on the portal aren't guaranteed stable,
- * so we look for a discharge-like key first ("abfluss…"/"flow"/"durchfluss"),
- * then fall back to any numeric value in a plausible discharge range
- * (Rhine at Basel stays within ~300–6000 m³/s).
+ * Parsing is defensive: we look for a discharge-like key first
+ * ("abfluss…"/"flow"/"durchfluss"), then fall back to any numeric value in a
+ * plausible discharge range (Rhine at Basel stays within ~300–6000 m³/s).
+ * TODO: pin the exact field names once verified against the live API
+ * (the dev sandbox couldn't reach data.bs.ch).
  */
 export async function fetchLiveFlow(): Promise<LiveFlow> {
   const res = await fetch(DATA_BS_URL);
@@ -72,11 +108,13 @@ export async function fetchLiveFlow(): Promise<LiveFlow> {
   if (!record) throw new Error("No records returned from data.bs.ch");
 
   let discharge: number | null = null;
+  let levelM: number | null = null;
   for (const [key, value] of Object.entries(record)) {
     if (typeof value !== "number") continue;
-    if (/abfluss|durchfluss|flow/i.test(key)) {
+    if (discharge === null && /abfluss|durchfluss|flow/i.test(key)) {
       discharge = value;
-      break;
+    } else if (levelM === null && /pegel|wasserstand|level/i.test(key)) {
+      levelM = value;
     }
   }
   if (discharge === null) {
@@ -99,5 +137,5 @@ export async function fetchLiveFlow(): Promise<LiveFlow> {
     }
   }
 
-  return { dischargeM3s: discharge, timestamp };
+  return { dischargeM3s: discharge, levelM, timestamp };
 }

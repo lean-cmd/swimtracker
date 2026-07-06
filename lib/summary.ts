@@ -22,6 +22,6 @@ export function buildStravaSummary(
       `Still-water equivalent pace: ${formatPace(result.stillWaterPaceSecPer100m!)}`
     );
   }
-  lines.push(``, `(estimated with a simplified constant-current model)`);
+  lines.push(``, `(experimental estimate — simplified current model)`);
   return lines.join("\n");
 }

@@ -23,7 +23,7 @@ export default function Home() {
   const [logLabel, setLogLabel] = useState<string>("");
   const [riverId, setRiverId] = useState(RIVER_PRESETS[0].id);
   const [currentMs, setCurrentMs] = useState(RIVER_PRESETS[0].defaultCurrentMs);
-  const [positionId, setPositionId] = useState("typical");
+  const [positionId, setPositionId] = useState("corridor");
 
   const river = RIVER_PRESETS.find((r) => r.id === riverId)!;
   const positionFactor =
@@ -155,7 +155,7 @@ export default function Home() {
         </p>
         <p>
           Official rules (bs.ch): swim only below 1&apos;500 m³/s and above
-          18 °C water, no swimming in harbor areas or at the Birsfelden lock,
+          18 °C water, no swimming in harbour areas or at the Birsfelden lock,
           no jumping from bridges, use a swim bag (not tied to your body).
         </p>
       </footer>
