@@ -1,7 +1,8 @@
-# 🌊 CurrentCorrector
+# 🌊 Rhyschwumm
 
-Estimate how much of a river swim's recorded distance/pace came from the
-current versus actual swimming effort.
+*Baseldytsch for a swim in the Rhy.* Estimates how much of a Basel Rhine
+swim came from the current versus actual swimming effort — formerly
+"CurrentCorrector".
 
 Built for Basel Rhine swimmers whose watches log heroic paces like
 **1:12 /100 m** — because the river did half the work. Upload a GPX track (or
@@ -26,18 +27,23 @@ Schwarzwaldbrücke to Johanniterbrücke ships in
 
 ## What it does
 
-**Log a swim (default, Basel-first)** — built for the reality that trackers
-struggle in the Rhine (GPS drops underwater, optical HR fails in water):
+**Log a Schwumm (default, one screen, no buttons)** — built for the reality
+that trackers struggle in the Rhine (GPS drops underwater, optical HR fails
+in water). Everything fits above the fold on a phone and results update
+live as you pick:
 
-- Tap entry and exit spots on a schematic Basel map — Birskopf, Rheinbad
-  Breite, Schwarzwaldbrücke, Museum Tinguely/Solitude (where the guided
-  Tuesday swims start), Wettsteinbrücke, Mittlere Brücke, Kaserne,
-  Johanniterbrücke, Dreirosenbrücke (the last legal exit before the harbour).
-  ★ marks the classics.
-- Enter your time in the water and whether you **swam** or **floated**.
-- Floating is treated as a free current measurement: your drift speed *is*
-  the current speed at your line in the river, and the app calibrates the
-  current setting from it.
+- Two dropdowns (got in at / got out at) over the **official canton zone
+  map** with animated entry/exit pins — Birskopf, Rheinbad Breite,
+  Schwarzwaldbrücke, Museum Tinguely/Solitude (where the guided Tuesday
+  swims start), Wettsteinbrücke, Mittlere Brücke, Kaserne,
+  Johanniterbrücke, Dreirosenbrücke (the last legal exit before the
+  harbour).
+- Minutes in the water plus an effort dropdown (**I swam / I floated**).
+  A float attributes the whole distance to the river — your drift speed
+  *is* the current.
+- No position question: a fixed usual-swim-lane factor (×0.85) applies,
+  since ~15 m closer to shore or middle only shifts the current ~±15%.
+- Results share via **WhatsApp** (wa.me link) or copy-paste for Strava.
 
 **GPX / Strava mode** — for swimmers with a working track:
 
@@ -74,12 +80,11 @@ current also depends on where you swim in the channel:
 - Results carry an explicit **"experimental estimate"** badge — this is a
   model, not scientific truth.
 
-**Official zones on the map** — the in-app map mirrors the canton's zone
-map: teal for the recommended swimming area (Schwarzwaldbrücke →
-Dreirosenbrücke), red for the danger zone upstream toward the Birsfelden
-lock, and a striped stub for the prohibited harbour below Dreirosenbrücke.
+**Official zones ARE the map** — the app renders the canton's own zone map
+image (`public/basel-rhine-zones.jpg`): teal recommended swimming area,
+red danger zone toward the Birsfelden lock, striped prohibited harbour.
 Birskopf and Rheinbad Breite are still selectable (people do start there)
-but are flagged ⚠️ as outside the recommended area.
+but trigger a caution note as outside the recommended area.
 
 **Output dashboard** — leads with one plain-language sentence ("You swam
 456 m with your own power — the river carried you the other 1.4 km…"),
@@ -95,10 +100,9 @@ time. Note that a Strava GPX export contains GPS points, timestamps and
 sometimes heart rate — but never calories, which is why the app estimates
 them itself.
 
-**Senior-friendly by design** — large type and buttons, one question at a
-time, no jargon on the main screen. Everything technical (manual flow
-override, m/s / km/h fields, current slider, other rivers) lives behind a
-single small "Expert settings" link.
+**Senior-friendly by design** — large type, plain words, no jargon on the
+main screen. The only technical controls left (manual flow m³/s, midstream
+m/s) hide behind a tiny "adjust" link.
 
 ## The current model (and its limits)
 
@@ -157,8 +161,9 @@ app/
   page.tsx              # main screen: input mode tabs, controls, dashboard
   layout.tsx            # metadata + dark theme shell
 components/
-  LogSwim.tsx           # self-reported: entry/exit spots + time + swim/float
-  BaselMap.tsx          # tappable schematic Basel Rhine map (SVG)
+  LogSwim.tsx           # entry/exit dropdowns + minutes + effort, live update
+  RhineMap.tsx          # official canton zone map with entry/exit pins
+  BaselMap.tsx          # (legacy) schematic SVG map, kept for reference
   GpxUpload.tsx         # drag & drop / file picker / sample loader
   StravaLink.tsx        # paste a Strava activity link → GPX export button
   CurrentControls.tsx   # preset + today's flow (live fetch) + swim position
