@@ -38,6 +38,14 @@ export const SWIM_POSITIONS: SwimPosition[] = [
   { id: "middle", label: "In the middle of the river", factor: 1.0 },
 ];
 
+/**
+ * Fixed factor for the usual Basel swim lane (a bit off the Kleinbasel
+ * shore). We deliberately don't ask where people swam: you should stay on
+ * one side anyway, and being ~15 m closer to the shore or the middle only
+ * shifts the current by roughly ±15% — within this model's error bars.
+ */
+export const SWIM_LANE_FACTOR = 0.85;
+
 /** Plain-language description of the current for the status line. */
 export function describeCurrent(ms: number): string {
   if (ms < 0.8) return "gentle";

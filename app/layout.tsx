@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CurrentCorrector",
+  title: "Rhyschwumm",
   description:
-    "Estimate how much of your river swim came from the current versus your own effort.",
+    "Basel Rhine swims, honestly measured: how much was you, how much was the Rhy?",
 };
 
 export default function RootLayout({

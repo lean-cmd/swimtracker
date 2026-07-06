@@ -8,7 +8,7 @@ export function buildStravaSummary(
   kcal?: number
 ): string {
   const lines = [
-    `🌊 CurrentCorrector — ${riverName}`,
+    `🌊 Rhyschwumm — ${riverName}`,
     ``,
     `GPS: ${formatDistance(result.gpsDistanceMeters)} in ${formatDuration(result.elapsedSeconds)} (${formatPace(result.gpsPaceSecPer100m)})`,
     `Current: ${result.effectiveCurrentMs.toFixed(2)} m/s along route → carried me ${formatDistance(result.currentDistanceMeters)} (${result.currentBoostPercent.toFixed(0)}% of the distance)`,
