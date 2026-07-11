@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import EffortScale from "@/components/EffortScale";
 import FlowChip from "@/components/FlowChip";
 import GpxUpload from "@/components/GpxUpload";
 import LogSwim from "@/components/LogSwim";
+import ProfileSettings, {
+  loadProfile,
+  saveProfile,
+  type Profile,
+} from "@/components/ProfileSettings";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import RouteMap from "@/components/RouteMap";
 import StravaLink from "@/components/StravaLink";
@@ -23,8 +28,18 @@ export default function Home() {
   const [trackLabel, setTrackLabel] = useState<string>("");
   const [logInput, setLogInput] = useState<SwimInput | null>(null);
   const [effort, setEffort] = useState(3); // 1 float … 4 hard
-  const [weightKg, setWeightKg] = useState(DEFAULT_WEIGHT_KG);
+  const [profile, setProfile] = useState<Profile>({
+    weightKg: DEFAULT_WEIGHT_KG,
+    sex: "u",
+  });
   const flow = useRhineFlow();
+
+  // Personal data lives on-device only.
+  useEffect(() => setProfile(loadProfile(DEFAULT_WEIGHT_KG)), []);
+  const updateProfile = (p: Profile) => {
+    setProfile(p);
+    saveProfile(p);
+  };
   const currentMs = flow.currentMs;
 
   const river = RIVER_PRESETS[0];
@@ -55,25 +70,28 @@ export default function Home() {
         <h1 className="whitespace-nowrap bg-gradient-to-r from-sky-300 to-teal-300 bg-clip-text text-xl font-extrabold tracking-tight text-transparent">
           🌊 Rhyschwumm
         </h1>
-        <div className="flex shrink-0 overflow-hidden rounded-full border border-slate-700 text-xs">
-          {(
-            [
-              ["log", "📝 Log"],
-              ["gpx", "📍 GPX"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => setMode(value)}
-              className={`whitespace-nowrap px-2.5 py-1.5 ${
-                mode === value
-                  ? "bg-sky-600 font-medium text-white"
-                  : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex overflow-hidden rounded-full border border-slate-700 text-xs">
+            {(
+              [
+                ["log", "📝 Log"],
+                ["gpx", "📍 GPX"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => setMode(value)}
+                className={`whitespace-nowrap px-3 py-2 ${
+                  mode === value
+                    ? "bg-sky-600 font-medium text-white"
+                    : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <ProfileSettings profile={profile} onChange={updateProfile} />
         </div>
       </header>
 
@@ -110,8 +128,8 @@ export default function Home() {
             isGps={mode === "gpx"}
             intendedFloat={intendedFloat}
             effortLevel={effort}
-            weightKg={weightKg}
-            onWeightChange={setWeightKg}
+            weightKg={profile.weightKg}
+            sex={profile.sex}
           />
         </>
       )}

@@ -8,7 +8,7 @@ import {
   formatPace,
   formatSpeed,
 } from "@/lib/format";
-import { estimateKcal } from "@/lib/energy";
+import { activeSwimSpeed, estimateKcal, type Sex } from "@/lib/energy";
 import { buildTcx } from "@/lib/tcx";
 import { buildStravaSummary } from "@/lib/summary";
 import StatCard from "./StatCard";
@@ -21,7 +21,7 @@ export default function ResultsDashboard({
   intendedFloat = false,
   effortLevel,
   weightKg,
-  onWeightChange,
+  sex,
 }: {
   result: CorrectionResult;
   riverName: string;
@@ -29,10 +29,10 @@ export default function ResultsDashboard({
   isGps?: boolean;
   /** true when the user set effort to 1 — the 100% river share is intentional. */
   intendedFloat?: boolean;
-  /** 1–4 from the effort scale; drives the calorie estimate. */
+  /** 1–4 from the intensity scale; drives the calorie duty-cycle. */
   effortLevel: number;
   weightKg: number;
-  onWeightChange: (kg: number) => void;
+  sex: Sex;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -40,9 +40,21 @@ export default function ResultsDashboard({
     result.swimmerSpeedMs,
     result.elapsedSeconds,
     weightKg,
-    effortLevel
+    effortLevel,
+    sex
   );
-  const summary = buildStravaSummary(result, riverName, kcal);
+  // Intensity reconstructs the speed while actively swimming — EASY means
+  // half the time floating, so the swimming half was twice as fast.
+  const vActive = activeSwimSpeed(result.swimmerSpeedMs, effortLevel);
+  const displayResult =
+    result.floating || vActive <= 0.05
+      ? result
+      : {
+          ...result,
+          swimmerSpeedMs: vActive,
+          stillWaterPaceSecPer100m: 100 / vActive,
+        };
+  const summary = buildStravaSummary(displayResult, riverName, kcal);
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(summary)}`;
 
   const copySummary = async () => {
@@ -109,16 +121,38 @@ export default function ResultsDashboard({
           <div className="mt-1 flex justify-between text-xs text-slate-400">
             <span>
               🏊 {(100 - result.currentBoostPercent).toFixed(0)}%
-              {!result.floating && result.stillWaterPaceSecPer100m && (
+              {!displayResult.floating && displayResult.stillWaterPaceSecPer100m && (
                 <span className="text-slate-500">
                   {" "}
-                  · {formatPace(result.stillWaterPaceSecPer100m)}
+                  · {formatPace(displayResult.stillWaterPaceSecPer100m)}
                 </span>
               )}
             </span>
             <span>{result.currentBoostPercent.toFixed(0)}% 🌊</span>
           </div>
         </div>
+
+        {/* the race: your swim speed vs the river itself */}
+        {result.effectiveCurrentMs > 0.05 && (
+          <div className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-slate-900/40 px-3 py-1.5 text-sm">
+            {result.floating ? (
+              <span className="text-slate-400">
+                🌊 wins by default — you floated
+              </span>
+            ) : vActive >= result.effectiveCurrentMs ? (
+              <span className="text-amber-300">
+                🏆 You out-swim the Rhy! {vActive.toFixed(1)} vs{" "}
+                {result.effectiveCurrentMs.toFixed(1)} m/s
+              </span>
+            ) : (
+              <span className="text-slate-300">
+                🌊 Rhy wins — you swim{" "}
+                {Math.round((vActive / result.effectiveCurrentMs) * 100)}% of
+                its pace
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <a
@@ -142,22 +176,6 @@ export default function ResultsDashboard({
           >
             ⬇ .tcx
           </button>
-          <label className="ml-auto inline-flex items-center gap-1 text-sm text-slate-400">
-            ⚖️
-            <input
-              type="number"
-              min="30"
-              max="200"
-              value={weightKg}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                if (Number.isFinite(v) && v > 0) onWeightChange(v);
-              }}
-              className="w-16 rounded-lg border border-slate-600 bg-slate-800 p-1.5 text-sm text-slate-100"
-              aria-label="Your weight in kilograms"
-            />
-            kg
-          </label>
         </div>
       </div>
 
@@ -195,13 +213,15 @@ export default function ResultsDashboard({
             value={`${result.effectiveCurrentMs.toFixed(2)} m/s`}
           />
           <StatCard
-            label="Your speed in water"
+            label="Speed while swimming"
             value={
-              result.floating ? "~0 m/s" : formatSpeed(result.swimmerSpeedMs)
+              displayResult.floating
+                ? "~0 m/s"
+                : formatSpeed(displayResult.swimmerSpeedMs)
             }
             sub={
-              result.stillWaterPaceSecPer100m
-                ? formatPace(result.stillWaterPaceSecPer100m)
+              displayResult.stillWaterPaceSecPer100m
+                ? formatPace(displayResult.stillWaterPaceSecPer100m)
                 : undefined
             }
             highlight

@@ -7,15 +7,15 @@ import type { FlowInfo } from "@/lib/useRhineFlow";
 
 /**
  * Hand-drawn vector map of the Basel Rhine knee (official Bachab-map
- * orientation: upstream right, Dreirosen top-left). Design language aims at
- * Google-Maps-style restraint: muted land/water, straight perpendicular
- * bridges with quiet labels, recognizable landmark silhouettes, one accent
- * color for the route.
+ * orientation: upstream right, Dreirosen top-left). Muted maps-style
+ * artwork; one accent color for the route.
  *
  * The swim route is a true sub-segment of the curved shore path: on mount
  * the path is sampled (getPointAtLength) to find each spot's arc position,
- * and the highlight is revealed with a dash trick — so it can never cut
+ * and the highlight is revealed with a dash window — so it can never cut
  * over land. Spot markers snap onto the same samples.
+ *
+ * All coordinates hand-placed in a 1000×620 viewBox.
  */
 
 /** Hand-placed anchors near the Kleinbasel shore; snapped to the path at runtime. */
@@ -30,11 +30,11 @@ const SHORE: Record<string, { x: number; y: number }> = {
 
 const SHORT_NAME: Record<string, string> = {
   schwarzwaldbruecke: "Tinguely",
-  wettsteinbruecke: "Wettsteinbrücke",
-  "mittlere-bruecke": "Mittlere Brücke",
+  wettsteinbruecke: "Wettstein",
+  "mittlere-bruecke": "Mittlere",
   kaserne: "Kaserne",
-  johanniterbruecke: "Johanniterbrücke",
-  dreirosen: "Dreirosen (last exit)",
+  johanniterbruecke: "Johanniter",
+  dreirosen: "Dreirosen (end)",
 };
 
 /** River centerline, upstream → downstream (band + flow animation). */
@@ -49,18 +49,25 @@ const SHORE_PATH =
   "C 505,472 450,432 405,405 C 362,378 340,357 318,335 " +
   "C 296,313 280,272 272,242 C 262,206 252,155 248,105";
 
-/** Straight bridges, perpendicular to the centerline at each crossing. */
-const BRIDGES: Array<{
-  line: [number, number, number, number];
-  label: string;
-  at: [number, number];
-  anchor?: "start" | "middle" | "end";
-}> = [
-  { line: [823, 266, 913, 350], label: "Schwarzwaldbrücke", at: [908, 388], anchor: "end" },
-  { line: [585, 421, 615, 543], label: "Wettsteinbrücke", at: [572, 402], anchor: "end" },
-  { line: [431, 390, 365, 496], label: "Mittlere Brücke", at: [447, 382], anchor: "start" },
-  { line: [183, 267, 303, 237], label: "Johanniterbrücke", at: [314, 234], anchor: "start" },
-  { line: [155, 112, 275, 98], label: "Dreirosenbrücke", at: [290, 120], anchor: "start" },
+/** Straight bridges, perpendicular to the centerline; labels run along them. */
+const BRIDGES: Array<{ line: [number, number, number, number]; label: string }> = [
+  { line: [823, 266, 913, 350], label: "Schwarzwaldbrücke" },
+  { line: [585, 421, 615, 543], label: "Wettsteinbrücke" },
+  { line: [431, 390, 365, 496], label: "Mittlere Brücke" },
+  { line: [183, 267, 303, 237], label: "Johanniterbrücke" },
+  { line: [155, 112, 275, 98], label: "Dreirosenbrücke" },
+];
+
+/**
+ * The four Rhine ferries (Fähren), each a cable across the river with the
+ * boat mid-stream: Wild Maa (St. Alban), Leu (Münster), Vogel Gryff
+ * (Klingental), Ueli (St. Johann).
+ */
+const FERRIES: Array<{ line: [number, number, number, number] }> = [
+  { line: [716, 384, 764, 452] },
+  { line: [490, 465, 500, 549] },
+  { line: [316, 338, 262, 386] },
+  { line: [188, 192, 268, 182] },
 ];
 
 const ORDER = CORRIDOR_SPOTS.map((s) => s.id);
@@ -71,7 +78,18 @@ type Arc = {
   pts: Record<string, { x: number; y: number }>;
 };
 
-function Triangle({
+/** Basel ferry: pointed gondola hull with a small cabin, hanging on its cable. */
+function FerryBoat({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x},${y})`} opacity={0.75} pointerEvents="none">
+      <path d="M -10,0 Q 0,7 10,0 Q 0,-3 -10,0 Z" fill="#cbd5e1" stroke="#334155" strokeWidth={1} />
+      <rect x={-3.5} y={-6.5} width={7} height={5} rx={1} fill="#cbd5e1" stroke="#334155" strokeWidth={1} />
+    </g>
+  );
+}
+
+/** Entry = swimmer over the official yellow triangle; exit = Wickelfisch. */
+function Marker({
   p,
   kind,
 }: {
@@ -103,6 +121,14 @@ function Triangle({
         strokeWidth={2.5}
         strokeLinejoin="round"
       />
+      <text
+        x={p.x}
+        y={kind === "entry" ? p.y - 22 : p.y + 40}
+        fontSize={26}
+        textAnchor="middle"
+      >
+        {kind === "entry" ? "🏊" : "🐟"}
+      </text>
     </g>
   );
 }
@@ -179,8 +205,9 @@ export default function RiverMap({
       }
     : { strokeDasharray: "0 1" };
 
+  // 16px picker text so iOS Safari doesn't zoom on focus.
   const selectClass =
-    "w-full appearance-none rounded-lg border border-white/15 bg-slate-900/75 px-2 py-1.5 text-sm text-slate-100 backdrop-blur";
+    "w-full appearance-none rounded-lg border border-white/15 bg-slate-900/75 px-2 py-2 text-base text-slate-100 backdrop-blur";
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-900 to-sky-950 shadow-lg">
@@ -229,75 +256,87 @@ export default function RiverMap({
           style={{ ["--flow-dur" as string]: flowDur, animationDelay: "-4s" }}
         />
 
-        {/* ——— bridges: straight, shortest crossing, quiet labels ——— */}
-        {BRIDGES.map(({ line: [x1, y1, x2, y2], label, at: [lx, ly], anchor }) => (
-          <g key={label}>
+        {/* ——— ferries: dotted cable + gondola ——— */}
+        {FERRIES.map(({ line: [x1, y1, x2, y2] }, i) => (
+          <g key={i}>
             <line
               x1={x1}
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke="#0b1520"
-              strokeWidth={10}
-              strokeLinecap="round"
-              opacity={0.7}
-            />
-            <line
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke="#8fa3b8"
-              strokeWidth={5.5}
+              stroke="#9fb3c8"
+              strokeWidth={2}
+              strokeDasharray="2 7"
               strokeLinecap="round"
               opacity={0.55}
             />
-            <text
-              x={lx}
-              y={ly}
-              fill="#7c8ba1"
-              fontSize={21}
-              textAnchor={anchor ?? "middle"}
-              opacity={0.9}
-            >
-              {label}
-            </text>
+            <FerryBoat x={(x1 + x2) / 2} y={(y1 + y2) / 2} />
           </g>
         ))}
+
+        {/* ——— bridges: straight crossings, labels along the deck ——— */}
+        {BRIDGES.map(({ line: [x1, y1, x2, y2], label }) => {
+          const mx = (x1 + x2) / 2;
+          const my = (y1 + y2) / 2;
+          let deg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+          if (deg > 90) deg -= 180;
+          if (deg < -90) deg += 180;
+          const len = Math.hypot(x2 - x1, y2 - y1);
+          const px = -(y2 - y1) / len; // unit perpendicular
+          const py = (x2 - x1) / len;
+          return (
+            <g key={label}>
+              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#0b1520" strokeWidth={10} strokeLinecap="round" opacity={0.7} />
+              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#8fa3b8" strokeWidth={5.5} strokeLinecap="round" opacity={0.55} />
+              <text
+                transform={`translate(${mx + px * 16},${my + py * 16}) rotate(${deg})`}
+                fill="#7c8ba1"
+                fontSize={19}
+                textAnchor="middle"
+                opacity={0.9}
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })}
         {/* Kaserne has no bridge — just its label */}
-        <text x={352} y={328} fill="#7c8ba1" fontSize={20} textAnchor="start" opacity={0.9}>
+        <text x={352} y={328} fill="#7c8ba1" fontSize={19} textAnchor="start" opacity={0.9}>
           Kaserne
         </text>
 
         {/* ——— landmarks ——— */}
-        {/* Roche towers: stepped, tapering silhouettes (Kleinbasel, upstream) */}
-        <g fill="#233247" stroke="#8fa3b8" strokeWidth={1.5} opacity={0.85}>
-          <path d="M 742,190 L 742,58 L 760,58 L 760,76 L 766,76 L 766,96 L 772,96 L 772,118 L 777,118 L 777,142 L 781,142 L 781,166 L 784,166 L 784,190 Z" />
-          <path d="M 800,190 L 800,96 L 815,96 L 815,110 L 820,110 L 820,126 L 824,126 L 824,144 L 827,144 L 827,164 L 829,164 L 829,190 Z" />
-          <g stroke="#8fa3b8" opacity={0.4}>
-            <line x1={745} y1={80} x2={758} y2={80} />
-            <line x1={745} y1={104} x2={764} y2={104} />
-            <line x1={745} y1={128} x2={770} y2={128} />
-            <line x1={745} y1={152} x2={776} y2={152} />
-            <line x1={803} y1={116} x2={817} y2={116} />
-            <line x1={803} y1={140} x2={821} y2={140} />
+        {/* Roche towers: right on the Kleinbasel bank, ~300 m below Tinguely */}
+        <g fill="#dbe4ee" fillOpacity={0.22} stroke="#94a3b8" strokeWidth={1.8} opacity={0.9}>
+          <path d="M 748,300 L 748,168 L 764,168 L 764,200 L 770,200 L 770,235 L 776,235 L 776,268 L 782,268 L 782,300 Z" />
+          <path d="M 790,300 L 790,210 L 803,210 L 803,238 L 808,238 L 808,266 L 812,266 L 812,300 Z" />
+          <g stroke="#94a3b8" opacity={0.45} strokeWidth={1.2}>
+            <line x1={751} y1={190} x2={762} y2={190} />
+            <line x1={751} y1={214} x2={767} y2={214} />
+            <line x1={751} y1={240} x2={773} y2={240} />
+            <line x1={751} y1={266} x2={779} y2={266} />
+            <line x1={793} y1={230} x2={801} y2={230} />
+            <line x1={793} y1={254} x2={806} y2={254} />
           </g>
         </g>
-        <text x={762} y={210} fill="#7c8ba1" fontSize={18} textAnchor="middle" opacity={0.85}>
-          Roche
-        </text>
 
-        {/* Münster: twin towers, spires, nave + rose window (Grossbasel bank) */}
-        <g fill="#233247" stroke="#8fa3b8" strokeWidth={1.5} opacity={0.85}>
-          <rect x={436} y={532} width={12} height={40} />
-          <polygon points="434,532 450,532 442,504" />
-          <rect x={478} y={532} width={12} height={40} />
-          <polygon points="476,532 492,532 484,504" />
-          <rect x={448} y={546} width={30} height={26} />
-          <polygon points="448,546 478,546 463,532" />
-          <circle cx={463} cy={556} r={4.5} fill="none" opacity={0.9} />
+        {/* Basel Münster: twin towers with openwork spires, gabled facade with
+            rose window, long nave with ridge turret (Grossbasel bank) */}
+        <g fill="#233247" stroke="#8fa3b8" strokeWidth={1.5} opacity={0.9}>
+          <rect x={430} y={540} width={13} height={56} />
+          <polygon points="427,540 446,540 436.5,498" />
+          <line x1={430} y1={556} x2={443} y2={556} opacity={0.6} />
+          <rect x={479} y={540} width={13} height={56} />
+          <polygon points="476,540 495,540 485.5,502" />
+          <line x1={479} y1={556} x2={492} y2={556} opacity={0.6} />
+          <rect x={443} y={556} width={36} height={40} />
+          <polygon points="443,556 479,556 461,534" />
+          <circle cx={461} cy={568} r={5.5} fill="none" />
+          <rect x={495} y={566} width={58} height={30} />
+          <polygon points="495,566 553,566 549,548 499,548" />
+          <polygon points="520,548 528,548 524,538" />
         </g>
-        <text x={463} y={592} fill="#7c8ba1" fontSize={18} textAnchor="middle" opacity={0.85}>
+        <text x={490} y={614} fill="#7c8ba1" fontSize={17} textAnchor="middle" opacity={0.85}>
           Münster
         </text>
 
@@ -336,7 +375,7 @@ export default function RiverMap({
               role="button"
               aria-label={SHORT_NAME[id]}
             >
-              <circle cx={p.x} cy={p.y} r={20} fill="transparent" />
+              <circle cx={p.x} cy={p.y} r={24} fill="transparent" />
               <circle
                 cx={p.x}
                 cy={p.y}
@@ -351,13 +390,13 @@ export default function RiverMap({
           );
         })}
 
-        <Triangle p={pos(entry)} kind="entry" />
-        <Triangle p={pos(exit)} kind="exit" />
+        <Marker p={pos(entry)} kind="entry" />
+        <Marker p={pos(exit)} kind="exit" />
       </svg>
 
       {/* pickers: right side — in at the top, out at the bottom */}
-      <div className="absolute right-2 top-2 flex w-[46%] max-w-[240px] items-center gap-1.5 rounded-xl bg-slate-900/40 p-1 backdrop-blur-[2px]">
-        <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-green-500" />
+      <div className="absolute right-2 top-2 flex w-[48%] max-w-[250px] items-center gap-1.5 rounded-xl bg-slate-900/40 p-1 backdrop-blur-[2px]">
+        <span aria-hidden className="shrink-0 text-base">🏊</span>
         <select
           value={entry}
           aria-label="Entry spot"
@@ -371,8 +410,8 @@ export default function RiverMap({
           ))}
         </select>
       </div>
-      <div className="absolute bottom-2 right-2 flex w-[46%] max-w-[240px] items-center gap-1.5 rounded-xl bg-slate-900/40 p-1 backdrop-blur-[2px]">
-        <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
+      <div className="absolute bottom-2 right-2 flex w-[48%] max-w-[250px] items-center gap-1.5 rounded-xl bg-slate-900/40 p-1 backdrop-blur-[2px]">
+        <span aria-hidden className="shrink-0 text-base">🐟</span>
         <select
           value={exit}
           aria-label="Exit spot"
