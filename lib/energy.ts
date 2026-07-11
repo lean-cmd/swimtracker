@@ -2,29 +2,28 @@
  * Calorie estimate for river swims.
  *
  * kcal = MET × body weight (kg) × hours, with the MET picked from the
- * swimmer's speed THROUGH THE WATER (not over ground — drifting with the
- * current is not exercise, no matter what the GPS pace says).
+ * swimmer's DECLARED effort (the 5-point slider), not from speed. In a river,
+ * speed over ground says little about work done — the current does an unknown
+ * share — and deriving MET from computed swim speed made a faster swim look
+ * like fewer calories. Effort × time is what watches without HR do too.
  *
  * MET anchors follow the Compendium of Physical Activities:
- * treading/floating ≈ 2.5, leisurely breaststroke ≈ 4.5, steady swimming
- * ≈ 6, brisk freestyle ≈ 8.3, fast freestyle ≈ 9.8.
+ * 1 floated ≈ 2.5, 2 easy ≈ 4.5, 3 steady ≈ 6, 4 brisk ≈ 8.3, 5 race ≈ 9.8.
  *
  * SIMPLIFICATION: no heart-rate data (Strava GPX sometimes embeds HR — a
  * later version could use it), and no cold-water thermogenesis, which is
  * real in the ~18–24 °C Rhine. Treat as a rough "order of magnitude", the
  * same way watches do.
  */
+export const EFFORT_MET = [2.5, 4.5, 6.0, 8.3, 9.8];
+
 export function estimateKcal(
-  swimmerSpeedMs: number,
+  effortLevel: number,
   elapsedSeconds: number,
   weightKg: number
 ): number {
-  let met: number;
-  if (swimmerSpeedMs < 0.1) met = 2.5; // floating / gentle treading
-  else if (swimmerSpeedMs < 0.4) met = 4.5; // easy breaststroke
-  else if (swimmerSpeedMs < 0.7) met = 6.0; // steady swimming
-  else if (swimmerSpeedMs < 1.0) met = 8.3; // brisk freestyle
-  else met = 9.8; // fast freestyle
+  const met =
+    EFFORT_MET[Math.min(EFFORT_MET.length - 1, Math.max(0, Math.round(effortLevel) - 1))];
   return met * weightKg * (elapsedSeconds / 3600);
 }
 

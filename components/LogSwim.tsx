@@ -1,37 +1,83 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { BASEL_SPOTS, distanceBetweenSpots } from "@/lib/rivers";
-import type { SwimInput } from "@/lib/types";
-import RhineMap from "./RhineMap";
+/* eslint-disable @next/next/no-img-element */
 
-export type Effort = "swim" | "float";
+import { useEffect, useRef, useState } from "react";
+import {
+  BASEL_SPOTS,
+  CORRIDOR_SPOTS,
+  distanceBetweenSpots,
+  spotIndex,
+} from "@/lib/rivers";
+import type { SwimInput } from "@/lib/types";
+import EffortSlider from "./EffortSlider";
 
 /**
- * The whole logging flow, above the fold: official zone map with pins that
- * follow the two dropdowns, plus time and effort. No buttons — results
- * update live via onChange as soon as the inputs make sense.
+ * Logging = the map. The cropped official zone map (north-shore corridor,
+ * Schwarzwaldbrücke → Dreirosenbrücke) is the background; the entry/exit
+ * pickers float on top of it and the pins follow. Below: minutes + effort.
+ * Pin positions are hand-placed percent coordinates on the 666×384 crop.
  */
+/** Short display names for the pickers; full names stay in the share text. */
+const SHORT_NAME: Record<string, string> = {
+  schwarzwaldbruecke: "Schwarzwaldbrücke",
+  tinguely: "Tinguely",
+  wettsteinbruecke: "Wettsteinbrücke",
+  "mittlere-bruecke": "Mittlere Brücke",
+  kaserne: "Kaserne",
+  johanniterbruecke: "Johanniterbrücke",
+  dreirosen: "Dreirosen 🛑",
+};
+
+const PIN_POS: Record<string, { x: number; y: number }> = {
+  dreirosen: { x: 19.6, y: 22 },
+  johanniterbruecke: { x: 23.0, y: 42 },
+  kaserne: { x: 29.5, y: 58.5 },
+  "mittlere-bruecke": { x: 36.9, y: 68 },
+  wettsteinbruecke: { x: 54.7, y: 74 },
+  tinguely: { x: 71.6, y: 64 },
+  schwarzwaldbruecke: { x: 87.8, y: 43 },
+};
+
+function Pin({ spotId, kind }: { spotId: string; kind: "entry" | "exit" }) {
+  const pos = PIN_POS[spotId];
+  if (!pos) return null;
+  const spot = BASEL_SPOTS[spotIndex(spotId)];
+  const color = kind === "entry" ? "bg-green-500" : "bg-red-500";
+  return (
+    <div
+      className="absolute -translate-x-1/2 -translate-y-1/2"
+      style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+      aria-label={`${spot?.name ?? spotId} (${kind})`}
+    >
+      <span className="relative flex h-5 w-5">
+        <span
+          className={`absolute inline-flex h-full w-full animate-ping rounded-full ${color} opacity-60`}
+        />
+        <span
+          className={`relative inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white ${color} text-[10px] font-bold text-white shadow-lg`}
+        >
+          {kind === "entry" ? "▶" : "■"}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export default function LogSwim({
+  effort,
+  onEffortChange,
   onChange,
 }: {
-  onChange: (
-    input: SwimInput | null,
-    effort: Effort,
-    label: string
-  ) => void;
+  effort: number;
+  onEffortChange: (level: number) => void;
+  onChange: (input: SwimInput | null, label: string) => void;
 }) {
   const [entry, setEntry] = useState<string>("tinguely");
   const [exit, setExit] = useState<string>("johanniterbruecke");
   const [minutes, setMinutes] = useState("25");
-  const [effort, setEffort] = useState<Effort>("swim");
 
-  const emit = (
-    nextEntry: string,
-    nextExit: string,
-    nextMinutes: string,
-    nextEffort: Effort
-  ) => {
+  const emit = (nextEntry: string, nextExit: string, nextMinutes: string) => {
     const distance =
       nextEntry && nextExit ? distanceBetweenSpots(nextEntry, nextExit) : 0;
     const mins = parseFloat(nextMinutes);
@@ -41,11 +87,10 @@ export default function LogSwim({
       onChange(
         // Self-reported swims follow the river line → alignment = 1.
         { distanceMeters: distance, elapsedSeconds: mins * 60, routeAlignment: 1 },
-        nextEffort,
         `${from} → ${to}`
       );
     } else {
-      onChange(null, nextEffort, "");
+      onChange(null, "");
     }
   };
 
@@ -54,96 +99,83 @@ export default function LogSwim({
   useEffect(() => {
     if (emittedOnce.current) return;
     emittedOnce.current = true;
-    emit(entry, exit, minutes, effort);
+    emit(entry, exit, minutes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const outsideRecommended = [entry, exit].some(
-    (id) => BASEL_SPOTS.find((s) => s.id === id)?.outsideRecommended
-  );
-
   const selectClass =
-    "w-full rounded-xl border border-slate-600 bg-slate-800 p-3 text-base text-slate-100";
+    "w-full appearance-none rounded-lg border border-white/20 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 backdrop-blur";
 
   return (
     <div className="space-y-3">
-      <RhineMap entryId={entry || null} exitId={exit || null} />
-
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block text-sm font-medium text-slate-300">
-          🟢 Got in at
-          <select
-            value={entry}
-            onChange={(e) => {
-              setEntry(e.target.value);
-              emit(e.target.value, exit, minutes, effort);
-            }}
-            className={`mt-1 ${selectClass}`}
-          >
-            {BASEL_SPOTS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm font-medium text-slate-300">
-          🔴 Got out at
-          <select
-            value={exit}
-            onChange={(e) => {
-              setExit(e.target.value);
-              emit(entry, e.target.value, minutes, effort);
-            }}
-            className={`mt-1 ${selectClass}`}
-          >
-            {BASEL_SPOTS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="relative w-full overflow-hidden rounded-2xl border border-slate-700 shadow-lg">
+        <img
+          src="/rhine-corridor.jpg"
+          alt="Basel Rhine swimming corridor map"
+          className="block h-auto w-full"
+        />
+        <Pin spotId={entry} kind="entry" />
+        <Pin spotId={exit} kind="exit" />
+        {/* pickers float on the map */}
+        <div className="absolute inset-x-0 top-0 grid grid-cols-2 gap-2 bg-gradient-to-b from-slate-900/90 via-slate-900/50 to-transparent p-2 pb-5">
+          <div className="flex items-center gap-1.5">
+            <span aria-hidden>🟢</span>
+            <select
+              value={entry}
+              aria-label="Entry spot"
+              onChange={(e) => {
+                setEntry(e.target.value);
+                emit(e.target.value, exit, minutes);
+              }}
+              className={selectClass}
+            >
+              {CORRIDOR_SPOTS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {SHORT_NAME[s.id] ?? s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span aria-hidden>🔴</span>
+            <select
+              value={exit}
+              aria-label="Exit spot"
+              onChange={(e) => {
+                setExit(e.target.value);
+                emit(entry, e.target.value, minutes);
+              }}
+              className={selectClass}
+            >
+              {CORRIDOR_SPOTS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {SHORT_NAME[s.id] ?? s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block text-sm font-medium text-slate-300">
-          ⏱️ Minutes in the water
+      <div className="flex items-center gap-3">
+        <label className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2">
+          <span aria-hidden>⏱️</span>
           <input
             type="number"
             min="1"
             step="1"
             value={minutes}
+            aria-label="Minutes in the water"
             onChange={(e) => {
               setMinutes(e.target.value);
-              emit(entry, exit, e.target.value, effort);
+              emit(entry, exit, e.target.value);
             }}
-            className={`mt-1 ${selectClass}`}
+            className="w-14 bg-transparent text-base text-slate-100 outline-none"
           />
+          <span className="text-xs text-slate-500">min</span>
         </label>
-        <label className="block text-sm font-medium text-slate-300">
-          💪 Effort
-          <select
-            value={effort}
-            onChange={(e) => {
-              const v = e.target.value as Effort;
-              setEffort(v);
-              emit(entry, exit, minutes, v);
-            }}
-            className={`mt-1 ${selectClass}`}
-          >
-            <option value="swim">I swam 🏊</option>
-            <option value="float">I floated 🛟</option>
-          </select>
-        </label>
+        <EffortSlider value={effort} onChange={onEffortChange} />
       </div>
-
-      {outsideRecommended && (
-        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
-          ⚠️ Careful — part of this stretch is outside the recommended
-          swimming area.
-        </p>
-      )}
     </div>
   );
 }

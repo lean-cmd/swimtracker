@@ -75,6 +75,13 @@ export const BASEL_SPOTS: RiverSpot[] = [
 /** Index of the first spot of the official recommended corridor. */
 export const RECOMMENDED_FROM = 2; // schwarzwaldbruecke
 
+/**
+ * The spots offered in the picker — MVP scope is the north-shore (Kleinbasel)
+ * corridor only, Schwarzwaldbrücke → Dreirosenbrücke. Birskopf and Breite sit
+ * outside the recommended zone and come back later with a bank-side model.
+ */
+export const CORRIDOR_SPOTS = BASEL_SPOTS.slice(RECOMMENDED_FROM);
+
 export const spotIndex = (id: string) =>
   BASEL_SPOTS.findIndex((s) => s.id === id);
 

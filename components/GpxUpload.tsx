@@ -49,19 +49,14 @@ export default function GpxUpload({
           const file = e.dataTransfer.files[0];
           if (file) void handleFile(file);
         }}
-        className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+        className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
           dragging
             ? "border-sky-400 bg-sky-500/10"
             : "border-slate-600 bg-slate-800/40 hover:border-slate-400"
         }`}
       >
         <p className="text-slate-200">
-          Drop a <span className="font-mono">.gpx</span> file here or tap to
-          choose
-        </p>
-        <p className="mt-1 text-xs text-slate-400">
-          Exports from Strava, Garmin Connect or Apple Watch (via export apps)
-          all work
+          📍 <span className="font-mono">.gpx</span>
         </p>
         <input
           ref={inputRef}
@@ -80,7 +75,7 @@ export default function GpxUpload({
         onClick={() => void loadSample()}
         className="text-sm text-sky-400 underline-offset-2 hover:underline"
       >
-        No file handy? Load the sample Basel Rhine swim →
+        Sample →
       </button>
 
       {error && (
