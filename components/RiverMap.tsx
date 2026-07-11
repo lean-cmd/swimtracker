@@ -437,17 +437,20 @@ export default function RiverMap({
           <span className="text-xs text-slate-400">…</span>
         ) : (
           <>
-            <span className="text-sm font-semibold text-sky-300">
+            <span
+              className="whitespace-nowrap text-sm font-semibold text-sky-300"
+              title={`${Math.round(flow.q)} m³/s (${flow.status})`}
+            >
               {kmh.toFixed(1)} km/h
             </span>
             {flow.tempC !== null && (
-              <span className="text-sm text-teal-300">
+              <span
+                className="text-sm font-semibold text-teal-300"
+                title="water temperature"
+              >
                 {flow.tempC.toFixed(1)}°
               </span>
             )}
-            <span className="text-[11px] text-slate-500" title={flow.status}>
-              {Math.round(flow.q)} m³/s
-            </span>
             {flow.status === "live" && (
               <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-emerald-400">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
