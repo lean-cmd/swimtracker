@@ -9,6 +9,7 @@ import {
   formatSpeed,
 } from "@/lib/format";
 import { estimateKcal } from "@/lib/energy";
+import { buildTcx } from "@/lib/tcx";
 import { buildStravaSummary } from "@/lib/summary";
 import StatCard from "./StatCard";
 
@@ -28,14 +29,19 @@ export default function ResultsDashboard({
   isGps?: boolean;
   /** true when the user set effort to 1 — the 100% river share is intentional. */
   intendedFloat?: boolean;
-  /** 1–5 from the effort slider; drives the calorie estimate. */
+  /** 1–4 from the effort scale; drives the calorie estimate. */
   effortLevel: number;
   weightKg: number;
   onWeightChange: (kg: number) => void;
 }) {
   const [copied, setCopied] = useState(false);
 
-  const kcal = estimateKcal(effortLevel, result.elapsedSeconds, weightKg);
+  const kcal = estimateKcal(
+    result.swimmerSpeedMs,
+    result.elapsedSeconds,
+    weightKg,
+    effortLevel
+  );
   const summary = buildStravaSummary(result, riverName, kcal);
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(summary)}`;
 
@@ -43,6 +49,24 @@ export default function ResultsDashboard({
     await navigator.clipboard.writeText(summary);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // .tcx carries distance + time + kcal into Strava / Garmin / Apple Health.
+  const downloadTcx = () => {
+    const xml = buildTcx({
+      distanceMeters: result.gpsDistanceMeters,
+      elapsedSeconds: result.elapsedSeconds,
+      kcal,
+      label: summary,
+    });
+    const url = URL.createObjectURL(
+      new Blob([xml], { type: "application/vnd.garmin.tcx+xml" })
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "rhyschwumm.tcx";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -111,6 +135,13 @@ export default function ResultsDashboard({
           >
             {copied ? "✓" : "📋 Strava"}
           </button>
+          <button
+            onClick={downloadTcx}
+            title="Download .tcx — import into Strava, Garmin or Apple Health"
+            className="rounded-xl bg-slate-700 px-4 py-2 text-base font-medium text-white hover:bg-slate-600"
+          >
+            ⬇ .tcx
+          </button>
           <label className="ml-auto inline-flex items-center gap-1 text-sm text-slate-400">
             ⚖️
             <input
@@ -132,8 +163,7 @@ export default function ResultsDashboard({
 
       {result.floating && !intendedFloat && (
         <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-          🌊 ≥ 🏊 — current alone explains this speed (~
-          {result.impliedCurrentMs.toFixed(2)} m/s). Lower it under ⚙️?
+          Today&apos;s current alone covers this pace — counted as a float 🛟
         </div>
       )}
 

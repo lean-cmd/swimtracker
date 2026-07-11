@@ -1,30 +1,47 @@
 /**
- * Calorie estimate for river swims.
+ * Calorie estimate for river swims — drag-based, not tier-based.
  *
- * kcal = MET × body weight (kg) × hours, with the MET picked from the
- * swimmer's DECLARED effort (the 5-point slider), not from speed. In a river,
- * speed over ground says little about work done — the current does an unknown
- * share — and deriving MET from computed swim speed made a faster swim look
- * like fewer calories. Effort × time is what watches without HR do too.
+ * kcal = MET × body weight (kg) × hours, with MET rising with the SQUARE of
+ * the swimmer's speed through the water (hydrodynamic drag work), plus a
+ * resting/treading baseline:
  *
- * MET anchors follow the Compendium of Physical Activities:
- * 1 floated ≈ 2.5, 2 easy ≈ 4.5, 3 steady ≈ 6, 4 brisk ≈ 8.3, 5 race ≈ 9.8.
+ *   MET(v) = 2.5 + 7.2 · v² · efficiency(effort)
  *
- * SIMPLIFICATION: no heart-rate data (Strava GPX sometimes embeds HR — a
- * later version could use it), and no cold-water thermogenesis, which is
- * real in the ~18–24 °C Rhine. Treat as a rough "order of magnitude", the
- * same way watches do.
+ * Anchored to the Compendium of Physical Activities: v≈0 treading → 2.5,
+ * v≈0.7 m/s steady → ≈6, v≈1.0 m/s brisk → ≈9.7. Because the v² term grows
+ * faster than time shrinks, swimming the same route FASTER now yields MORE
+ * calories (above ~0.6 m/s), which matches intuition — the old tier model
+ * had it backwards.
+ *
+ * The 4-point effort scale declares perceived exertion: FLOAT (1) pins the
+ * baseline; EASY/STEADY/HARD scale efficiency ±~10% — fighting the water at
+ * the same speed costs more than gliding.
+ *
+ * SIMPLIFICATION: no heart rate, no cold-water thermogenesis (real in the
+ * ~18–24 °C Rhine). A rough order of magnitude, same as watches without HR.
  */
-export const EFFORT_MET = [2.5, 4.5, 6.0, 8.3, 9.8];
+const BASE_MET = 2.5;
+const DRAG_MET_COEFF = 7.2;
+const MAX_MET = 14;
+const EFFORT_EFFICIENCY = [0.9, 1.0, 1.15]; // easy, steady, hard
 
 export function estimateKcal(
-  effortLevel: number,
+  swimmerSpeedMs: number,
   elapsedSeconds: number,
-  weightKg: number
+  weightKg: number,
+  effortLevel: number // 1 float … 4 hard
 ): number {
-  const met =
-    EFFORT_MET[Math.min(EFFORT_MET.length - 1, Math.max(0, Math.round(effortLevel) - 1))];
-  return met * weightKg * (elapsedSeconds / 3600);
+  const hours = elapsedSeconds / 3600;
+  if (effortLevel <= 1) return BASE_MET * weightKg * hours;
+  const eff =
+    EFFORT_EFFICIENCY[
+      Math.min(EFFORT_EFFICIENCY.length - 1, Math.max(0, effortLevel - 2))
+    ];
+  const met = Math.min(
+    MAX_MET,
+    BASE_MET + DRAG_MET_COEFF * swimmerSpeedMs ** 2 * eff
+  );
+  return met * weightKg * hours;
 }
 
 export const DEFAULT_WEIGHT_KG = 75;

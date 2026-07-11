@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import CurrentControls from "@/components/CurrentControls";
-import EffortSlider from "@/components/EffortSlider";
+import EffortScale from "@/components/EffortScale";
 import GpxUpload from "@/components/GpxUpload";
 import LogSwim from "@/components/LogSwim";
 import ResultsDashboard from "@/components/ResultsDashboard";
@@ -21,7 +21,7 @@ export default function Home() {
   const [track, setTrack] = useState<ParsedTrack | null>(null);
   const [trackLabel, setTrackLabel] = useState<string>("");
   const [logInput, setLogInput] = useState<SwimInput | null>(null);
-  const [effort, setEffort] = useState(3); // 1 = floated … 5 = full send
+  const [effort, setEffort] = useState(3); // 1 float … 4 hard
   const [currentMs, setCurrentMs] = useState(RIVER_PRESETS[0].defaultCurrentMs);
   const [weightKg, setWeightKg] = useState(DEFAULT_WEIGHT_KG);
 
@@ -91,7 +91,7 @@ export default function Home() {
           />
           <StravaLink />
           {track && <RouteMap points={track.points} />}
-          {track && <EffortSlider value={effort} onChange={setEffort} />}
+          {track && <EffortScale value={effort} onChange={setEffort} />}
         </div>
       )}
 

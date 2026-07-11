@@ -10,55 +10,57 @@ import {
   spotIndex,
 } from "@/lib/rivers";
 import type { SwimInput } from "@/lib/types";
-import EffortSlider from "./EffortSlider";
+import EffortScale from "./EffortScale";
 
 /**
- * Logging = the map. The cropped official zone map (north-shore corridor,
- * Schwarzwaldbrücke → Dreirosenbrücke) is the background; the entry/exit
- * pickers float on top of it and the pins follow. Below: minutes + effort.
- * Pin positions are hand-placed percent coordinates on the 666×384 crop.
+ * Logging = the map. The essential band of the official zone map
+ * (Schwarzwaldbrücke → Dreirosenbrücke, north-shore corridor) is the
+ * background; the entry/exit pickers float on top and yellow triangle
+ * markers — the official map's entry/exit symbol — follow them.
+ * Pin positions are hand-placed percent coordinates on the 666×342 crop.
  */
-/** Short display names for the pickers; full names stay in the share text. */
 const SHORT_NAME: Record<string, string> = {
   schwarzwaldbruecke: "Schwarzwaldbrücke",
-  tinguely: "Tinguely",
   wettsteinbruecke: "Wettsteinbrücke",
   "mittlere-bruecke": "Mittlere Brücke",
   kaserne: "Kaserne",
   johanniterbruecke: "Johanniterbrücke",
-  dreirosen: "Dreirosen 🛑",
+  dreirosen: "Dreirosen (last exit)",
 };
 
 const PIN_POS: Record<string, { x: number; y: number }> = {
-  dreirosen: { x: 19.6, y: 22 },
-  johanniterbruecke: { x: 23.0, y: 42 },
-  kaserne: { x: 29.5, y: 58.5 },
-  "mittlere-bruecke": { x: 36.9, y: 68 },
-  wettsteinbruecke: { x: 54.7, y: 74 },
-  tinguely: { x: 71.6, y: 64 },
-  schwarzwaldbruecke: { x: 87.8, y: 43 },
+  dreirosen: { x: 19.6, y: 20 },
+  johanniterbruecke: { x: 23.0, y: 44 },
+  kaserne: { x: 29.5, y: 62 },
+  "mittlere-bruecke": { x: 36.9, y: 73 },
+  wettsteinbruecke: { x: 54.7, y: 80 },
+  schwarzwaldbruecke: { x: 87.8, y: 45 },
 };
 
+/** Official-style yellow triangle: ▼ = get in, ▲ = get out. */
 function Pin({ spotId, kind }: { spotId: string; kind: "entry" | "exit" }) {
   const pos = PIN_POS[spotId];
   if (!pos) return null;
   const spot = BASEL_SPOTS[spotIndex(spotId)];
-  const color = kind === "entry" ? "bg-green-500" : "bg-red-500";
   return (
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2"
       style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
       aria-label={`${spot?.name ?? spotId} (${kind})`}
     >
-      <span className="relative flex h-5 w-5">
+      <span className="relative flex items-center justify-center">
+        <span className="absolute h-6 w-6 animate-ping rounded-full bg-yellow-300 opacity-40" />
         <span
-          className={`absolute inline-flex h-full w-full animate-ping rounded-full ${color} opacity-60`}
-        />
-        <span
-          className={`relative inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white ${color} text-[10px] font-bold text-white shadow-lg`}
+          className="relative text-xl leading-none text-yellow-300"
+          style={{ textShadow: "0 0 3px rgba(0,0,0,.9)" }}
         >
-          {kind === "entry" ? "▶" : "■"}
+          {kind === "entry" ? "▼" : "▲"}
         </span>
+        <span
+          className={`absolute -bottom-1.5 h-1.5 w-1.5 rounded-full ${
+            kind === "entry" ? "bg-green-500" : "bg-red-500"
+          }`}
+        />
       </span>
     </div>
   );
@@ -73,7 +75,7 @@ export default function LogSwim({
   onEffortChange: (level: number) => void;
   onChange: (input: SwimInput | null, label: string) => void;
 }) {
-  const [entry, setEntry] = useState<string>("tinguely");
+  const [entry, setEntry] = useState<string>("schwarzwaldbruecke");
   const [exit, setExit] = useState<string>("johanniterbruecke");
   const [minutes, setMinutes] = useState("25");
 
@@ -114,12 +116,17 @@ export default function LogSwim({
           alt="Basel Rhine swimming corridor map"
           className="block h-auto w-full"
         />
+        {/* soften the artwork so it reads as background */}
+        <div className="absolute inset-0 bg-slate-900/25" />
         <Pin spotId={entry} kind="entry" />
         <Pin spotId={exit} kind="exit" />
         {/* pickers float on the map */}
         <div className="absolute inset-x-0 top-0 grid grid-cols-2 gap-2 bg-gradient-to-b from-slate-900/90 via-slate-900/50 to-transparent p-2 pb-5">
           <div className="flex items-center gap-1.5">
-            <span aria-hidden>🟢</span>
+            <span
+              aria-hidden
+              className="h-2.5 w-2.5 shrink-0 rounded-full bg-green-500"
+            />
             <select
               value={entry}
               aria-label="Entry spot"
@@ -137,7 +144,10 @@ export default function LogSwim({
             </select>
           </div>
           <div className="flex items-center gap-1.5">
-            <span aria-hidden>🔴</span>
+            <span
+              aria-hidden
+              className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500"
+            />
             <select
               value={exit}
               aria-label="Exit spot"
@@ -174,7 +184,7 @@ export default function LogSwim({
           />
           <span className="text-xs text-slate-500">min</span>
         </label>
-        <EffortSlider value={effort} onChange={onEffortChange} />
+        <EffortScale value={effort} onChange={onEffortChange} />
       </div>
     </div>
   );
