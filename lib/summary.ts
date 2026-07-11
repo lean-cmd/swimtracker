@@ -1,31 +1,42 @@
 import type { CorrectionResult } from "./types";
 import { formatDistance, formatDuration, formatPace } from "./format";
 
-/** Plain-text summary suitable for pasting into a Strava activity description. */
+/**
+ * Share text with some Rhy in it — short, braggable, pasteable into a
+ * Strava description or a group chat.
+ */
 export function buildStravaSummary(
   result: CorrectionResult,
   riverName: string,
-  kcal?: number
+  kcal: number,
+  label?: string,
+  race?: { vActive: number; gaugeLaneMs: number }
 ): string {
-  const lines = [
-    `🌊 Rhyschwumm — ${riverName}`,
-    ``,
-    `GPS: ${formatDistance(result.gpsDistanceMeters)} in ${formatDuration(result.elapsedSeconds)} (${formatPace(result.gpsPaceSecPer100m)})`,
-    `Current: ${result.effectiveCurrentMs.toFixed(2)} m/s along route → carried me ${formatDistance(result.currentDistanceMeters)} (${result.currentBoostPercent.toFixed(0)}% of the distance)`,
-  ];
+  const lines: string[] = [`\u{1F30A} Rhyschwumm${label ? ` \u00B7 ${label}` : ""}`];
+
   if (result.floating) {
     lines.push(
-      `Mostly drifting — the river did the work. Implied current ≈ ${result.impliedCurrentMs.toFixed(2)} m/s.`
+      `\u{1F6DF} Full-service float: the Rhy carried me ${formatDistance(result.gpsDistanceMeters)} in ${formatDuration(result.elapsedSeconds)}.`,
+      `\u{1F525} ${Math.round(kcal)} kcal (yes, floating counts a bit)`
     );
   } else {
     lines.push(
-      `Swimmer effort: ${formatDistance(result.swimmerDistanceMeters)} through the water`,
-      `Still-water equivalent pace: ${formatPace(result.stillWaterPaceSecPer100m!)}`
+      `\u{1F3CA} Me: ${formatDistance(result.swimmerDistanceMeters)} \u00B7 \u{1F30A} Rhy: ${formatDistance(result.currentDistanceMeters)} (${result.currentBoostPercent.toFixed(0)}%)`,
+      `\u23F1 ${formatDuration(result.elapsedSeconds)} \u00B7 \u{1F525} ${Math.round(kcal)} kcal${
+        result.stillWaterPaceSecPer100m
+          ? ` \u00B7 pool pace ${formatPace(result.stillWaterPaceSecPer100m)}`
+          : ""
+      }`
     );
+    if (race && race.gaugeLaneMs > 0.05) {
+      lines.push(
+        race.vActive >= race.gaugeLaneMs
+          ? `\u{1F3C6} Out-swam the Rhy (${race.vActive.toFixed(1)} vs ${race.gaugeLaneMs.toFixed(1)} m/s)!`
+          : `\u{1F3C1} Rhy wins today \u2014 I held ${Math.round((race.vActive / race.gaugeLaneMs) * 100)}% of its ${(race.gaugeLaneMs * 3.6).toFixed(1)} km/h`
+      );
+    }
   }
-  if (kcal !== undefined) {
-    lines.push(`Energy: ≈ ${Math.round(kcal)} kcal (effort-based estimate)`);
-  }
-  lines.push(``, `(experimental estimate — simplified current model)`);
+
+  lines.push(`\u2014 rhyschwumm, made in Basel \u{1F1E8}\u{1F1ED}`);
   return lines.join("\n");
 }

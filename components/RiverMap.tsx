@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CORRIDOR_SPOTS } from "@/lib/rivers";
+import {
+  MapSwimmer,
+  MapWickelfisch,
+  SwimmerIcon,
+  WickelfischIcon,
+} from "./icons";
 import { FLOW_WARNING_M3S, SWIM_LANE_FACTOR } from "@/lib/hydro";
 import type { FlowInfo } from "@/lib/useRhineFlow";
 
@@ -66,7 +72,7 @@ const BRIDGES: Array<{ line: [number, number, number, number]; label: string }> 
 const FERRIES: Array<{ line: [number, number, number, number] }> = [
   { line: [716, 384, 764, 452] },
   { line: [490, 465, 500, 549] },
-  { line: [316, 338, 262, 386] },
+  { line: [328, 335, 258, 381] },
   { line: [188, 192, 268, 182] },
 ];
 
@@ -121,14 +127,11 @@ function Marker({
         strokeWidth={2.5}
         strokeLinejoin="round"
       />
-      <text
-        x={p.x}
-        y={kind === "entry" ? p.y - 22 : p.y + 40}
-        fontSize={26}
-        textAnchor="middle"
-      >
-        {kind === "entry" ? "🏊" : "🐟"}
-      </text>
+      {kind === "entry" ? (
+        <MapSwimmer x={p.x} y={p.y} />
+      ) : (
+        <MapWickelfisch x={p.x} y={p.y} />
+      )}
     </g>
   );
 }
@@ -187,6 +190,8 @@ export default function RiverMap({
     const e = ORDER.indexOf(entry);
     const x = ORDER.indexOf(exit);
     if (i === e || i === x) return;
+    // Dreirosen is the mandatory last exit — never an entry.
+    if (id === "dreirosen") return onExit(id);
     if (i < e) onEntry(id);
     else if (i > x) onExit(id);
     else if (i - e <= x - i) onEntry(id);
@@ -396,14 +401,14 @@ export default function RiverMap({
 
       {/* pickers: right side — in at the top, out at the bottom */}
       <div className="absolute right-2 top-2 flex w-[48%] max-w-[250px] items-center gap-1.5 rounded-xl bg-slate-900/40 p-1 backdrop-blur-[2px]">
-        <span aria-hidden className="shrink-0 text-base">🏊</span>
+        <SwimmerIcon className="h-5 w-7 shrink-0" />
         <select
           value={entry}
           aria-label="Entry spot"
           onChange={(ev) => onEntry(ev.target.value)}
           className={selectClass}
         >
-          {CORRIDOR_SPOTS.map((s) => (
+          {CORRIDOR_SPOTS.filter((s) => s.id !== "dreirosen").map((s) => (
             <option key={s.id} value={s.id}>
               {SHORT_NAME[s.id] ?? s.name}
             </option>
@@ -411,7 +416,7 @@ export default function RiverMap({
         </select>
       </div>
       <div className="absolute bottom-2 right-2 flex w-[48%] max-w-[250px] items-center gap-1.5 rounded-xl bg-slate-900/40 p-1 backdrop-blur-[2px]">
-        <span aria-hidden className="shrink-0 text-base">🐟</span>
+        <WickelfischIcon className="h-5 w-7 shrink-0" />
         <select
           value={exit}
           aria-label="Exit spot"
@@ -435,9 +440,20 @@ export default function RiverMap({
             <span className="text-sm font-semibold text-sky-300">
               {kmh.toFixed(1)} km/h
             </span>
+            {flow.tempC !== null && (
+              <span className="text-sm text-teal-300">
+                {flow.tempC.toFixed(1)}°
+              </span>
+            )}
             <span className="text-[11px] text-slate-500" title={flow.status}>
-              {flow.status === "live" ? "●" : "◐"} {Math.round(flow.q)} m³/s
+              {Math.round(flow.q)} m³/s
             </span>
+            {flow.status === "live" && (
+              <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-emerald-400">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                live
+              </span>
+            )}
           </>
         )}
       </div>

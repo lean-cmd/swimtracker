@@ -131,6 +131,7 @@ const CACHE_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
 
 export interface CachedFlow {
   dischargeM3s: number;
+  tempC?: number | null;
   fetchedAt: number; // epoch ms
   timestamp: string | null; // measurement time as reported by the API
 }
@@ -139,6 +140,7 @@ export function saveCachedFlow(flow: LiveFlow): void {
   try {
     const entry: CachedFlow = {
       dischargeM3s: flow.dischargeM3s,
+      tempC: flow.tempC ?? null,
       fetchedAt: Date.now(),
       timestamp: flow.timestamp,
     };
@@ -169,59 +171,26 @@ export function loadCachedFlow(): CachedFlow | null {
 export interface LiveFlow {
   dischargeM3s: number;
   levelM: number | null;
+  tempC?: number | null;
   timestamp: string | null;
 }
 
-const DATA_BS_URL =
-  "https://data.bs.ch/api/explore/v2.1/catalog/datasets/100089/records?order_by=timestamp%20DESC&limit=1";
+// Same-origin proxy (app/api/flow) — avoids CORS entirely and adds server
+// caching plus the water-temperature lookup.
+const FLOW_API_URL = "/api/flow";
 
-/**
- * Fetch the latest Rhine discharge from data.bs.ch (runs in the browser).
- *
- * Dataset 100089 documents the columns as `timestamp`, `pegel` (water
- * level, m) and `abfluss` (discharge, m³/s) — those are read first, with a
- * defensive fallback (any discharge-like key, then any numeric value in the
- * plausible 300–6000 m³/s range) in case the portal renames fields.
- */
+/** Fetch the latest Rhine reading through our own /api/flow proxy. */
 export async function fetchLiveFlow(): Promise<LiveFlow> {
-  const res = await fetch(DATA_BS_URL);
-  if (!res.ok) throw new Error(`data.bs.ch responded ${res.status}`);
+  const res = await fetch(FLOW_API_URL);
+  if (!res.ok) throw new Error(`flow api responded ${res.status}`);
   const data = await res.json();
-  const record: Record<string, unknown> | undefined = data?.results?.[0];
-  if (!record) throw new Error("No records returned from data.bs.ch");
-
-  let discharge: number | null =
-    typeof record.abfluss === "number" ? record.abfluss : null;
-  let levelM: number | null =
-    typeof record.pegel === "number" ? record.pegel : null;
-  for (const [key, value] of Object.entries(record)) {
-    if (typeof value !== "number") continue;
-    if (discharge === null && /abfluss|durchfluss|flow/i.test(key)) {
-      discharge = value;
-    } else if (levelM === null && /pegel|wasserstand|level/i.test(key)) {
-      levelM = value;
-    }
+  if (typeof data?.dischargeM3s !== "number") {
+    throw new Error("flow api returned no discharge");
   }
-  if (discharge === null) {
-    for (const value of Object.values(record)) {
-      if (typeof value === "number" && value >= 300 && value <= 6000) {
-        discharge = value;
-        break;
-      }
-    }
-  }
-  if (discharge === null) {
-    throw new Error("Could not find a discharge field in the response");
-  }
-
-  let timestamp: string | null =
-    typeof record.timestamp === "string" ? record.timestamp : null;
-  for (const [key, value] of Object.entries(record)) {
-    if (typeof value === "string" && /time|zeit|date/i.test(key)) {
-      timestamp = value;
-      break;
-    }
-  }
-
-  return { dischargeM3s: discharge, levelM, timestamp };
+  return {
+    dischargeM3s: data.dischargeM3s,
+    levelM: typeof data.levelM === "number" ? data.levelM : null,
+    tempC: typeof data.tempC === "number" ? data.tempC : null,
+    timestamp: typeof data.timestamp === "string" ? data.timestamp : null,
+  };
 }

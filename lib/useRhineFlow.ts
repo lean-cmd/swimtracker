@@ -17,6 +17,8 @@ export interface FlowInfo {
   status: "loading" | "live" | "cached" | "seasonal";
   /** Discharge in m³/s, null while loading. */
   q: number | null;
+  /** Water temperature in °C when a station reports one. */
+  tempC: number | null;
   /** Midstream surface current in m/s (lane factor NOT applied). */
   currentMs: number;
 }
@@ -27,6 +29,7 @@ export function useRhineFlow(): FlowInfo {
   const [info, setInfo] = useState<FlowInfo>({
     status: "loading",
     q: null,
+    tempC: null,
     currentMs: LOADING_DEFAULT_MS,
   });
   const resolvedOnce = useRef(false);
@@ -34,16 +37,20 @@ export function useRhineFlow(): FlowInfo {
   useEffect(() => {
     if (resolvedOnce.current) return;
     resolvedOnce.current = true;
-    const apply = (status: FlowInfo["status"], q: number) =>
-      setInfo({ status, q, currentMs: midstreamCurrentFromDischarge(q) });
+    const apply = (
+      status: FlowInfo["status"],
+      q: number,
+      tempC: number | null = null
+    ) =>
+      setInfo({ status, q, tempC, currentMs: midstreamCurrentFromDischarge(q) });
     fetchLiveFlow()
       .then((live) => {
         saveCachedFlow(live);
-        apply("live", live.dischargeM3s);
+        apply("live", live.dischargeM3s, live.tempC ?? null);
       })
       .catch(() => {
         const cached = loadCachedFlow();
-        if (cached) apply("cached", cached.dischargeM3s);
+        if (cached) apply("cached", cached.dischargeM3s, cached.tempC ?? null);
         else apply("seasonal", seasonalDischarge(new Date()));
       });
   }, []);

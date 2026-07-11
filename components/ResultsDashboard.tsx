@@ -12,21 +12,28 @@ import { estimateKcal, type Sex } from "@/lib/energy";
 import { buildTcx } from "@/lib/tcx";
 import { buildStravaSummary } from "@/lib/summary";
 import StatCard from "./StatCard";
+import { SwimmerIcon } from "./icons";
+import { shareCard } from "@/lib/shareCard";
+import { formatDuration as fmtDur } from "@/lib/format";
 
 /** Numbers first, words almost never — the story is the bar and three stats. */
 export default function ResultsDashboard({
   result,
   riverName,
+  label = "",
   isGps = true,
   intendedFloat = false,
   vActive,
   duty,
   gaugeLaneMs,
+  tempC = null,
   weightKg,
   sex,
 }: {
   result: CorrectionResult;
   riverName: string;
+  /** Route or track name for share text and the stat card. */
+  label?: string;
   /** false when the distance came from spot-to-spot estimation, not GPS. */
   isGps?: boolean;
   /** true when the user set intensity to Float — 100% river share is intentional. */
@@ -37,6 +44,7 @@ export default function ResultsDashboard({
   duty: number;
   /** Today's real river speed on the swim lane, for the race chip. */
   gaugeLaneMs: number;
+  tempC?: number | null;
   weightKg: number;
   sex: Sex;
 }) {
@@ -51,14 +59,56 @@ export default function ResultsDashboard({
           swimmerSpeedMs: vActive,
           stillWaterPaceSecPer100m: 100 / vActive,
         };
-  const summary = buildStravaSummary(displayResult, riverName, kcal);
-  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(summary)}`;
+  const summary = buildStravaSummary(displayResult, riverName, kcal, label, {
+    vActive,
+    gaugeLaneMs,
+  });
+  const raceText = result.floating
+    ? "\u{1F6DF} the Rhy did the work"
+    : vActive >= gaugeLaneMs
+      ? "\u{1F3C6} Out-swam the Rhy!"
+      : `\u{1F3C1} Rhy wins \u2014 ${Math.round((vActive / gaugeLaneMs) * 100)}% of its pace`;
+
+  // Native share sheet where available (mobile); WhatsApp link otherwise.
+  const shareText = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: summary });
+        return;
+      } catch {
+        // cancelled — nothing to do
+      }
+      return;
+    }
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(summary)}`,
+      "_blank",
+      "noopener"
+    );
+  };
 
   const copySummary = async () => {
     await navigator.clipboard.writeText(summary);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const makeCard = () =>
+    void shareCard({
+      label: label || riverName,
+      youMeters: result.swimmerDistanceMeters,
+      rhyMeters: result.currentDistanceMeters,
+      rhyPercent: result.currentBoostPercent,
+      kcal,
+      durationText: fmtDur(result.elapsedSeconds),
+      paceText:
+        !displayResult.floating && displayResult.stillWaterPaceSecPer100m
+          ? `${Math.floor(displayResult.stillWaterPaceSecPer100m / 60)}:${String(Math.round(displayResult.stillWaterPaceSecPer100m) % 60).padStart(2, "0")} /100m`
+          : null,
+      raceText,
+      kmh: gaugeLaneMs * 3.6,
+      tempC,
+    });
 
   // .tcx carries distance + time + kcal into Strava / Garmin / Apple Health.
   const downloadTcx = () => {
@@ -87,7 +137,9 @@ export default function ResultsDashboard({
             <div className="text-2xl font-bold text-emerald-300">
               {formatDistance(result.swimmerDistanceMeters)}
             </div>
-            <div className="text-xs text-slate-400">🏊 you</div>
+            <div className="flex items-center justify-center gap-1 text-xs text-slate-400">
+              <SwimmerIcon className="h-3.5 w-5" /> you
+            </div>
           </div>
           <div>
             <div className="text-2xl font-bold text-sky-300">
@@ -151,24 +203,30 @@ export default function ResultsDashboard({
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <a
-            href={whatsappHref}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => void shareText()}
             className="rounded-xl bg-green-600 px-4 py-2 text-base font-medium text-white hover:bg-green-500"
           >
             💬 Share
-          </a>
+          </button>
           <button
-            onClick={copySummary}
+            onClick={makeCard}
+            title="Share as image — works with Google Health, Instagram, anywhere"
             className="rounded-xl bg-sky-600 px-4 py-2 text-base font-medium text-white hover:bg-sky-500"
           >
-            {copied ? "✓" : "📋 Strava"}
+            🖼 Card
+          </button>
+          <button
+            onClick={copySummary}
+            title="Copy text for a Strava description"
+            className="rounded-xl bg-slate-700 px-3.5 py-2 text-base font-medium text-white hover:bg-slate-600"
+          >
+            {copied ? "✓" : "📋"}
           </button>
           <button
             onClick={downloadTcx}
-            title="Download .tcx — import into Strava, Garmin or Apple Health"
-            className="rounded-xl bg-slate-700 px-4 py-2 text-base font-medium text-white hover:bg-slate-600"
+            title="Download .tcx — import into Strava or Garmin"
+            className="rounded-xl bg-slate-700 px-3.5 py-2 text-base font-medium text-white hover:bg-slate-600"
           >
             ⬇ .tcx
           </button>

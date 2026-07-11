@@ -72,8 +72,8 @@ export default function LogSwim({
         flow={flow}
       />
 
-      <div className="flex items-center gap-3">
-        <label className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2">
+      <div className="flex items-stretch gap-3">
+        <label className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3">
           <span aria-hidden>⏱️</span>
           <input
             type="number"

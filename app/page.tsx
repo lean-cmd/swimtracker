@@ -24,6 +24,7 @@ export default function Home() {
   const [importOpen, setImportOpen] = useState(false);
   const [trackLabel, setTrackLabel] = useState<string>("");
   const [logInput, setLogInput] = useState<SwimInput | null>(null);
+  const [logLabel, setLogLabel] = useState<string>("");
   const [effort, setEffort] = useState(3); // 1 float … 4 hard
   const [profile, setProfile] = useState<Profile>({
     weightKg: DEFAULT_WEIGHT_KG,
@@ -121,7 +122,10 @@ export default function Home() {
         <LogSwim
           effort={effort}
           onEffortChange={setEffort}
-          onChange={(swimInput) => setLogInput(swimInput)}
+          onChange={(swimInput, swimLabel) => {
+            setLogInput(swimInput);
+            setLogLabel(swimLabel);
+          }}
           flow={flow}
         />
       )}
@@ -130,27 +134,43 @@ export default function Home() {
         <ResultsDashboard
           result={result}
           riverName={river.name}
+          label={track ? trackLabel : logLabel}
           isGps={!!track}
           intendedFloat={intendedFloat}
           vActive={vActive}
           duty={level.duty}
           gaugeLaneMs={currentMs * SWIM_LANE_FACTOR}
+          tempC={flow.tempC}
           weightKg={profile.weightKg}
           sex={profile.sex}
         />
       )}
 
-      <footer className="border-t border-slate-800 pt-2 text-center text-[11px] text-slate-600">
-        ≈ estimates ·{" "}
-        <a
-          href="https://www.bs.ch"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline-offset-2 hover:underline"
-        >
-          bs.ch rules
-        </a>{" "}
-        · data.bs.ch
+      <footer className="space-y-1 border-t border-slate-800 pt-2 text-center text-[11px] text-slate-600">
+        <div className="text-slate-500">
+          Mit ❤️ z&apos;Basel gmacht — am Rhy dehei 🇨🇭
+        </div>
+        <div>
+          ≈ estimates ·{" "}
+          <a
+            href="https://www.bs.ch"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline-offset-2 hover:underline"
+          >
+            bs.ch rules
+          </a>{" "}
+          ·{" "}
+          <a
+            href="https://www.bachapp.ch"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline-offset-2 hover:underline"
+          >
+            BachApp
+          </a>{" "}
+          · data.bs.ch
+        </div>
       </footer>
     </main>
   );

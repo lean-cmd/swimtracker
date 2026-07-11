@@ -10,7 +10,7 @@ import type { ParsedTrack } from "@/lib/types";
  * swimmer's own Strava session → they pick/drop the downloaded file and
  * the track lands in the app. Plain .gpx files work directly.
  */
-type Stage = "idle" | "resolving" | "awaiting-file";
+type Stage = "idle" | "resolving" | "ready" | "awaiting-file";
 
 export default function ImportSheet({
   onTrack,
@@ -21,6 +21,7 @@ export default function ImportSheet({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [link, setLink] = useState("");
+  const [activityId, setActivityId] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -48,32 +49,29 @@ export default function ImportSheet({
     onClose();
   };
 
-  const fetchFromStrava = async () => {
+  // iOS Safari kills window.open after an await — so resolving only finds
+  // the activity ID; the actual download is a real anchor the user taps.
+  const resolveLink = async () => {
     setError(null);
     const direct = link.match(/strava\.com\/activities\/(\d+)/)?.[1];
-    let id = direct ?? null;
-    if (!id) {
-      setStage("resolving");
-      try {
-        const res = await fetch(
-          `/api/strava/resolve?url=${encodeURIComponent(link)}`
-        );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Could not resolve link");
-        id = data.activityId as string;
-      } catch (e) {
-        setStage("idle");
-        setError(e instanceof Error ? e.message : "Could not resolve link");
-        return;
-      }
+    if (direct) {
+      setActivityId(direct);
+      setStage("ready");
+      return;
     }
-    // The swimmer's own browser session authorizes the download.
-    window.open(
-      `https://www.strava.com/activities/${id}/export_gpx`,
-      "_blank",
-      "noopener"
-    );
-    setStage("awaiting-file");
+    setStage("resolving");
+    try {
+      const res = await fetch(
+        `/api/strava/resolve?url=${encodeURIComponent(link)}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not resolve link");
+      setActivityId(data.activityId as string);
+      setStage("ready");
+    } catch (e) {
+      setStage("idle");
+      setError(e instanceof Error ? e.message : "Could not resolve link");
+    }
   };
 
   const canFetch = /strava\.(app\.link|com)\//.test(link);
@@ -110,17 +108,37 @@ export default function ImportSheet({
             onChange={(e) => {
               setLink(e.target.value.trim());
               setStage("idle");
+              setActivityId(null);
             }}
             className="min-w-0 flex-1 rounded-xl border border-slate-600 bg-slate-800 px-3 py-2.5 text-base text-slate-100 placeholder:text-slate-500"
           />
-          <button
-            disabled={!canFetch || stage === "resolving"}
-            onClick={() => void fetchFromStrava()}
-            className="shrink-0 rounded-xl bg-orange-600 px-4 py-2.5 text-base font-medium text-white disabled:opacity-40"
-          >
-            {stage === "resolving" ? "…" : "Get GPX"}
-          </button>
+          {stage === "ready" && activityId ? (
+            <a
+              href={`https://www.strava.com/activities/${activityId}/export_gpx`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setStage("awaiting-file")}
+              className="shrink-0 rounded-xl bg-orange-600 px-4 py-2.5 text-base font-medium text-white"
+            >
+              ⬇ GPX
+            </a>
+          ) : (
+            <button
+              disabled={!canFetch || stage === "resolving"}
+              onClick={() => void resolveLink()}
+              className="shrink-0 rounded-xl bg-orange-600 px-4 py-2.5 text-base font-medium text-white disabled:opacity-40"
+            >
+              {stage === "resolving" ? "…" : "Find"}
+            </button>
+          )}
         </div>
+
+        {stage === "ready" && (
+          <p className="text-sm text-orange-200">
+            Found it — tap ⬇ GPX (your Strava login does the rest), then pick
+            the file below.
+          </p>
+        )}
 
         {stage === "awaiting-file" && (
           <p className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-sm text-orange-200">
