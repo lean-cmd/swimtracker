@@ -18,3 +18,15 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+/* River flow animation: dash pattern drifts downstream; duration is set
+   per-element via --flow-dur from today's current speed. Offsets are a
+   multiple of each dash pattern length so the loop is seamless. */
+@keyframes riverflow {
+  to {
+    stroke-dashoffset: -768;
+  }
+}
+.flow-dash {
+  animation: riverflow var(--flow-dur, 6s) linear infinite;
+}

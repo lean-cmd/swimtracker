@@ -63,8 +63,9 @@ export interface RiverSpot {
 export const BASEL_SPOTS: RiverSpot[] = [
   { id: "birskopf", name: "Birskopf", lat: 47.5519, lon: 7.6247, popular: true, outsideRecommended: true },
   { id: "breite", name: "Rheinbad Breite (St. Alban)", lat: 47.554, lon: 7.6155, popular: true, outsideRecommended: true },
-  // (Museum Tinguely sits right at Schwarzwaldbrücke — one spot, not two.)
-  { id: "schwarzwaldbruecke", name: "Schwarzwaldbrücke", lat: 47.5551, lon: 7.6123, popular: true },
+  // Museum Tinguely sits right at Schwarzwaldbrücke — one spot, and swimmers
+  // know it by the museum, so that's the name.
+  { id: "schwarzwaldbruecke", name: "Tinguely", lat: 47.5551, lon: 7.6123, popular: true },
   { id: "wettsteinbruecke", name: "Wettsteinbrücke", lat: 47.5578, lon: 7.5962 },
   { id: "mittlere-bruecke", name: "Mittlere Brücke", lat: 47.5605, lon: 7.5906 },
   { id: "kaserne", name: "Kaserne / Klingental", lat: 47.5622, lon: 7.5882 },

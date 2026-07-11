@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import CurrentControls from "@/components/CurrentControls";
 import EffortScale from "@/components/EffortScale";
+import FlowChip from "@/components/FlowChip";
 import GpxUpload from "@/components/GpxUpload";
 import LogSwim from "@/components/LogSwim";
 import ResultsDashboard from "@/components/ResultsDashboard";
@@ -11,6 +11,7 @@ import StravaLink from "@/components/StravaLink";
 import { correctForCurrent } from "@/lib/current";
 import { DEFAULT_WEIGHT_KG } from "@/lib/energy";
 import { SWIM_LANE_FACTOR } from "@/lib/hydro";
+import { useRhineFlow } from "@/lib/useRhineFlow";
 import { RIVER_PRESETS } from "@/lib/rivers";
 import type { ParsedTrack, SwimInput } from "@/lib/types";
 
@@ -22,8 +23,9 @@ export default function Home() {
   const [trackLabel, setTrackLabel] = useState<string>("");
   const [logInput, setLogInput] = useState<SwimInput | null>(null);
   const [effort, setEffort] = useState(3); // 1 float … 4 hard
-  const [currentMs, setCurrentMs] = useState(RIVER_PRESETS[0].defaultCurrentMs);
   const [weightKg, setWeightKg] = useState(DEFAULT_WEIGHT_KG);
+  const flow = useRhineFlow();
+  const currentMs = flow.currentMs;
 
   const river = RIVER_PRESETS[0];
   const intendedFloat = effort === 1;
@@ -80,6 +82,7 @@ export default function Home() {
           effort={effort}
           onEffortChange={setEffort}
           onChange={(swimInput) => setLogInput(swimInput)}
+          flow={flow}
         />
       ) : (
         <div className="space-y-3">
@@ -92,10 +95,9 @@ export default function Home() {
           <StravaLink />
           {track && <RouteMap points={track.points} />}
           {track && <EffortScale value={effort} onChange={setEffort} />}
+          <FlowChip flow={flow} />
         </div>
       )}
-
-      <CurrentControls currentMs={currentMs} onCurrentChange={setCurrentMs} />
 
       {input && result && (
         <>
