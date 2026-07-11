@@ -24,7 +24,7 @@ body {
    multiple of each dash pattern length so the loop is seamless. */
 @keyframes riverflow {
   to {
-    stroke-dashoffset: -768;
+    stroke-dashoffset: -750;
   }
 }
 .flow-dash {

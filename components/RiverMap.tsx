@@ -1,22 +1,24 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { CORRIDOR_SPOTS } from "@/lib/rivers";
 import { FLOW_WARNING_M3S, SWIM_LANE_FACTOR } from "@/lib/hydro";
 import type { FlowInfo } from "@/lib/useRhineFlow";
 
 /**
- * Hand-drawn vector map of the Basel Rhine knee (same orientation as the
- * official Bachab map: upstream right, Dreirosen top-left). Everything is
- * SVG so nothing pixelates; artwork is deliberately muted so the UI reads
- * on top of it. Interactions:
- *  - shore dots are clickable and set entry/exit (entry stays upstream)
- *  - yellow triangles (official entry/exit symbol) sit ON the shore line
- *  - the river animates in flow direction, speed tied to today's current
+ * Hand-drawn vector map of the Basel Rhine knee (official Bachab-map
+ * orientation: upstream right, Dreirosen top-left). Design language aims at
+ * Google-Maps-style restraint: muted land/water, straight perpendicular
+ * bridges with quiet labels, recognizable landmark silhouettes, one accent
+ * color for the route.
  *
- * All coordinates are hand-placed in a 1000×620 viewBox.
+ * The swim route is a true sub-segment of the curved shore path: on mount
+ * the path is sampled (getPointAtLength) to find each spot's arc position,
+ * and the highlight is revealed with a dash trick — so it can never cut
+ * over land. Spot markers snap onto the same samples.
  */
 
-/** Points ON the Kleinbasel (inner) shore line, upstream → downstream. */
+/** Hand-placed anchors near the Kleinbasel shore; snapped to the path at runtime. */
 const SHORE: Record<string, { x: number; y: number }> = {
   schwarzwaldbruecke: { x: 845, y: 272 },
   wettsteinbruecke: { x: 585, y: 445 },
@@ -35,41 +37,51 @@ const SHORT_NAME: Record<string, string> = {
   dreirosen: "Dreirosen (last exit)",
 };
 
-/** River centerline, upstream → downstream (drives band + flow animation). */
+/** River centerline, upstream → downstream (band + flow animation). */
 const CENTERLINE =
   "M 960,150 C 920,240 900,280 860,315 C 790,378 700,455 595,482 " +
   "C 495,507 445,472 398,443 C 350,413 320,398 293,358 " +
   "C 262,312 250,275 240,235 C 227,190 220,150 214,85";
 
-/** Corridor / typical swim route along the inner shore. */
+/** Corridor / swim line along the inner (Kleinbasel) shore. */
 const SHORE_PATH =
   "M 880,245 C 865,258 855,266 845,272 C 760,318 675,415 585,445 " +
   "C 505,472 450,432 405,405 C 362,378 340,357 318,335 " +
   "C 296,313 280,272 272,242 C 262,206 252,155 248,105";
 
-const BRIDGES: Array<[number, number, number, number]> = [
-  [828, 262, 930, 352], // Schwarzwaldbrücke (Tinguely)
-  [570, 432, 622, 532], // Wettsteinbrücke
-  [383, 392, 418, 495], // Mittlere Brücke
-  [205, 258, 300, 232], // Johanniterbrücke
-  [168, 112, 268, 98], // Dreirosenbrücke
+/** Straight bridges, perpendicular to the centerline at each crossing. */
+const BRIDGES: Array<{
+  line: [number, number, number, number];
+  label: string;
+  at: [number, number];
+  anchor?: "start" | "middle" | "end";
+}> = [
+  { line: [823, 266, 913, 350], label: "Schwarzwaldbrücke", at: [908, 388], anchor: "end" },
+  { line: [585, 421, 615, 543], label: "Wettsteinbrücke", at: [572, 402], anchor: "end" },
+  { line: [431, 390, 365, 496], label: "Mittlere Brücke", at: [447, 382], anchor: "start" },
+  { line: [183, 267, 303, 237], label: "Johanniterbrücke", at: [314, 234], anchor: "start" },
+  { line: [155, 112, 275, 98], label: "Dreirosenbrücke", at: [290, 120], anchor: "start" },
 ];
 
 const ORDER = CORRIDOR_SPOTS.map((s) => s.id);
 
+type Arc = {
+  total: number;
+  at: Record<string, number>;
+  pts: Record<string, { x: number; y: number }>;
+};
+
 function Triangle({
-  id,
+  p,
   kind,
 }: {
-  id: string;
+  p: { x: number; y: number };
   kind: "entry" | "exit";
 }) {
-  const p = SHORE[id];
-  if (!p) return null;
   const pts =
     kind === "entry"
-      ? `${p.x - 11},${p.y - 15} ${p.x + 11},${p.y - 15} ${p.x},${p.y + 3}`
-      : `${p.x - 11},${p.y + 15} ${p.x + 11},${p.y + 15} ${p.x},${p.y - 3}`;
+      ? `${p.x - 10},${p.y - 14} ${p.x + 10},${p.y - 14} ${p.x},${p.y + 3}`
+      : `${p.x - 10},${p.y + 14} ${p.x + 10},${p.y + 14} ${p.x},${p.y - 3}`;
   return (
     <g pointerEvents="none">
       <circle
@@ -79,20 +91,10 @@ function Triangle({
         fill="none"
         stroke={kind === "entry" ? "#4ade80" : "#f87171"}
         strokeWidth={2}
-        opacity={0.9}
+        opacity={0.85}
       >
-        <animate
-          attributeName="r"
-          values="12;19;12"
-          dur="2.2s"
-          repeatCount="indefinite"
-        />
-        <animate
-          attributeName="opacity"
-          values="0.9;0.15;0.9"
-          dur="2.2s"
-          repeatCount="indefinite"
-        />
+        <animate attributeName="r" values="12;19;12" dur="2.6s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.85;0.1;0.85" dur="2.6s" repeatCount="indefinite" />
       </circle>
       <polygon
         points={pts}
@@ -119,11 +121,41 @@ export default function RiverMap({
   flow: FlowInfo;
 }) {
   const kmh = flow.currentMs * SWIM_LANE_FACTOR * 3.6;
-  // Faster river → faster dashes. 4 km/h ≈ 6s per cycle.
-  const flowDur = `${(24 / Math.max(1, kmh)).toFixed(1)}s`;
+  // Slow, riverine drift: ~10s per cycle at a typical 5.7 km/h.
+  const flowDur = `${(60 / Math.max(1.5, kmh)).toFixed(1)}s`;
 
-  // Clicking a shore dot: keep entry upstream of exit, move whichever
-  // marker makes sense for the clicked spot.
+  const shoreRef = useRef<SVGPathElement>(null);
+  const [arc, setArc] = useState<Arc | null>(null);
+
+  useEffect(() => {
+    const el = shoreRef.current;
+    if (!el) return;
+    const total = el.getTotalLength();
+    const samples: Array<{ x: number; y: number; len: number }> = [];
+    for (let i = 0; i <= 400; i++) {
+      const len = (total * i) / 400;
+      const p = el.getPointAtLength(len);
+      samples.push({ x: p.x, y: p.y, len });
+    }
+    const at: Record<string, number> = {};
+    const pts: Record<string, { x: number; y: number }> = {};
+    for (const id of ORDER) {
+      const t = SHORE[id];
+      let best = samples[0];
+      let bd = Infinity;
+      for (const s of samples) {
+        const d = (s.x - t.x) ** 2 + (s.y - t.y) ** 2;
+        if (d < bd) {
+          bd = d;
+          best = s;
+        }
+      }
+      at[id] = best.len;
+      pts[id] = { x: best.x, y: best.y };
+    }
+    setArc({ total, at, pts });
+  }, []);
+
   const pick = (id: string) => {
     const i = ORDER.indexOf(id);
     const e = ORDER.indexOf(entry);
@@ -135,13 +167,17 @@ export default function RiverMap({
     else onExit(id);
   };
 
-  // Highlighted route: shore polyline between entry and exit.
-  const e = ORDER.indexOf(entry);
-  const x = ORDER.indexOf(exit);
-  const routeIds = ORDER.slice(Math.min(e, x), Math.max(e, x) + 1);
-  const routePath = routeIds
-    .map((id, i) => `${i === 0 ? "M" : "L"} ${SHORE[id].x},${SHORE[id].y}`)
-    .join(" ");
+  const pos = (id: string) => arc?.pts[id] ?? SHORE[id];
+
+  // Route reveal: dash exactly covering [entry…exit] along the shore path.
+  const routeStart = arc ? Math.min(arc.at[entry], arc.at[exit]) : 0;
+  const routeEnd = arc ? Math.max(arc.at[entry], arc.at[exit]) : 0;
+  const routeDash = arc
+    ? {
+        strokeDasharray: `${routeEnd - routeStart} ${arc.total}`,
+        strokeDashoffset: -routeStart,
+      }
+    : { strokeDasharray: "0 1" };
 
   const selectClass =
     "w-full appearance-none rounded-lg border border-white/15 bg-slate-900/75 px-2 py-1.5 text-sm text-slate-100 backdrop-blur";
@@ -149,22 +185,16 @@ export default function RiverMap({
   return (
     <div className="relative w-full overflow-hidden rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-900 to-sky-950 shadow-lg">
       <svg viewBox="0 0 1000 620" className="block h-auto w-full">
-        {/* river band */}
-        <path
-          d={CENTERLINE}
-          fill="none"
-          stroke="#16323e"
-          strokeWidth={80}
-          strokeLinecap="round"
-        />
-        {/* danger tint upstream of the entry area (toward the lock) */}
+        {/* ——— water ——— */}
+        <path d={CENTERLINE} fill="none" stroke="#16323e" strokeWidth={80} strokeLinecap="round" />
+        {/* danger stretch upstream, toward the lock */}
         <path
           d="M 960,150 C 930,218 912,262 878,298"
           fill="none"
           stroke="#7f1d1d"
           strokeWidth={80}
           strokeLinecap="round"
-          opacity={0.35}
+          opacity={0.25}
         />
         {/* recommended corridor along the Kleinbasel shore */}
         <path
@@ -173,95 +203,131 @@ export default function RiverMap({
           stroke="#14b8a6"
           strokeWidth={24}
           strokeLinecap="round"
-          opacity={0.18}
+          opacity={0.14}
         />
-        {/* animated flow */}
+        {/* slow layered drift — broad sheets of water, staggered */}
         <path
           d={CENTERLINE}
           fill="none"
           stroke="#7dd3fc"
-          strokeWidth={9}
+          strokeWidth={26}
           strokeLinecap="round"
-          strokeDasharray="16 48"
-          opacity={0.3}
+          strokeDasharray="60 90"
+          opacity={0.07}
           className="flow-dash"
           style={{ ["--flow-dur" as string]: flowDur }}
+        />
+        <path
+          d={CENTERLINE}
+          fill="none"
+          stroke="#7dd3fc"
+          strokeWidth={10}
+          strokeLinecap="round"
+          strokeDasharray="34 116"
+          opacity={0.14}
+          className="flow-dash"
+          style={{ ["--flow-dur" as string]: flowDur, animationDelay: "-4s" }}
+        />
+
+        {/* ——— bridges: straight, shortest crossing, quiet labels ——— */}
+        {BRIDGES.map(({ line: [x1, y1, x2, y2], label, at: [lx, ly], anchor }) => (
+          <g key={label}>
+            <line
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="#0b1520"
+              strokeWidth={10}
+              strokeLinecap="round"
+              opacity={0.7}
+            />
+            <line
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="#8fa3b8"
+              strokeWidth={5.5}
+              strokeLinecap="round"
+              opacity={0.55}
+            />
+            <text
+              x={lx}
+              y={ly}
+              fill="#7c8ba1"
+              fontSize={21}
+              textAnchor={anchor ?? "middle"}
+              opacity={0.9}
+            >
+              {label}
+            </text>
+          </g>
+        ))}
+        {/* Kaserne has no bridge — just its label */}
+        <text x={352} y={328} fill="#7c8ba1" fontSize={20} textAnchor="start" opacity={0.9}>
+          Kaserne
+        </text>
+
+        {/* ——— landmarks ——— */}
+        {/* Roche towers: stepped, tapering silhouettes (Kleinbasel, upstream) */}
+        <g fill="#233247" stroke="#8fa3b8" strokeWidth={1.5} opacity={0.85}>
+          <path d="M 742,190 L 742,58 L 760,58 L 760,76 L 766,76 L 766,96 L 772,96 L 772,118 L 777,118 L 777,142 L 781,142 L 781,166 L 784,166 L 784,190 Z" />
+          <path d="M 800,190 L 800,96 L 815,96 L 815,110 L 820,110 L 820,126 L 824,126 L 824,144 L 827,144 L 827,164 L 829,164 L 829,190 Z" />
+          <g stroke="#8fa3b8" opacity={0.4}>
+            <line x1={745} y1={80} x2={758} y2={80} />
+            <line x1={745} y1={104} x2={764} y2={104} />
+            <line x1={745} y1={128} x2={770} y2={128} />
+            <line x1={745} y1={152} x2={776} y2={152} />
+            <line x1={803} y1={116} x2={817} y2={116} />
+            <line x1={803} y1={140} x2={821} y2={140} />
+          </g>
+        </g>
+        <text x={762} y={210} fill="#7c8ba1" fontSize={18} textAnchor="middle" opacity={0.85}>
+          Roche
+        </text>
+
+        {/* Münster: twin towers, spires, nave + rose window (Grossbasel bank) */}
+        <g fill="#233247" stroke="#8fa3b8" strokeWidth={1.5} opacity={0.85}>
+          <rect x={436} y={532} width={12} height={40} />
+          <polygon points="434,532 450,532 442,504" />
+          <rect x={478} y={532} width={12} height={40} />
+          <polygon points="476,532 492,532 484,504" />
+          <rect x={448} y={546} width={30} height={26} />
+          <polygon points="448,546 478,546 463,532" />
+          <circle cx={463} cy={556} r={4.5} fill="none" opacity={0.9} />
+        </g>
+        <text x={463} y={592} fill="#7c8ba1" fontSize={18} textAnchor="middle" opacity={0.85}>
+          Münster
+        </text>
+
+        {/* ——— shore path (invisible reference for arc sampling) ——— */}
+        <path ref={shoreRef} d={SHORE_PATH} fill="none" stroke="none" />
+
+        {/* ——— route: curved sub-segment of the shore, casing + fill ——— */}
+        <path
+          d={SHORE_PATH}
+          fill="none"
+          stroke="#92600a"
+          strokeWidth={8}
+          strokeLinecap="round"
+          opacity={0.9}
+          pointerEvents="none"
+          style={routeDash}
         />
         <path
           d={SHORE_PATH}
           fill="none"
-          stroke="#5eead4"
-          strokeWidth={4}
+          stroke="#fbbf24"
+          strokeWidth={4.5}
           strokeLinecap="round"
-          strokeDasharray="8 40"
-          opacity={0.25}
-          className="flow-dash"
-          style={{ ["--flow-dur" as string]: flowDur }}
-        />
-
-        {/* bridges */}
-        {BRIDGES.map(([x1, y1, x2, y2], i) => (
-          <line
-            key={i}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke="#94a3b8"
-            strokeWidth={5}
-            strokeLinecap="round"
-            opacity={0.4}
-          />
-        ))}
-
-        {/* Roche towers (Kleinbasel side, upstream of Tinguely) */}
-        <g opacity={0.6} stroke="#64748b" fill="#1e293b" transform="translate(-95,55)">
-          <rect x={856} y={62} width={28} height={98} rx={3} />
-          <rect x={896} y={95} width={24} height={65} rx={3} />
-          <line x1={860} y1={92} x2={880} y2={92} />
-          <line x1={860} y1={120} x2={880} y2={120} />
-          <line x1={900} y1={122} x2={916} y2={122} />
-        </g>
-        {/* Münster */}
-        <g opacity={0.45} stroke="#64748b" fill="#1e293b" strokeLinejoin="round">
-          <path d="M 448,568 L 448,532 L 457,514 L 466,532 L 466,552 L 480,552 L 480,530 L 489,512 L 498,530 L 498,568 Z" />
-        </g>
-
-        {/* today's current, in the empty bend */}
-        {flow.q !== null && (
-          <g textAnchor="middle" pointerEvents="none">
-            <text x={585} y={200} fill="#7dd3fc" fontSize={40} fontWeight={700}>
-              {kmh.toFixed(1)} km/h
-            </text>
-            <text x={585} y={230} fill="#64748b" fontSize={16}>
-              {flow.status === "live" ? "●" : "◐"} {Math.round(flow.q)} m³/s
-            </text>
-            {flow.q > FLOW_WARNING_M3S && (
-              <text x={585} y={262} fill="#fca5a5" fontSize={18} fontWeight={600}>
-                ⚠ no swimming
-              </text>
-            )}
-          </g>
-        )}
-
-        {/* highlighted swim route between entry and exit */}
-        <path
-          d={routePath}
-          fill="none"
-          stroke="#fde047"
-          strokeWidth={4}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeDasharray="7 9"
-          opacity={0.85}
           pointerEvents="none"
-          className="flow-dash"
-          style={{ ["--flow-dur" as string]: flowDur }}
+          style={routeDash}
         />
 
-        {/* clickable shore spots */}
+        {/* ——— clickable spots (snapped to the shore path) ——— */}
         {ORDER.map((id) => {
-          const p = SHORE[id];
+          const p = pos(id);
           return (
             <g
               key={id}
@@ -274,7 +340,7 @@ export default function RiverMap({
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={7}
+                r={6.5}
                 fill="#e2e8f0"
                 stroke="#0f172a"
                 strokeWidth={2.5}
@@ -285,8 +351,8 @@ export default function RiverMap({
           );
         })}
 
-        <Triangle id={entry} kind="entry" />
-        <Triangle id={exit} kind="exit" />
+        <Triangle p={pos(entry)} kind="entry" />
+        <Triangle p={pos(exit)} kind="exit" />
       </svg>
 
       {/* pickers: right side — in at the top, out at the bottom */}
@@ -320,6 +386,27 @@ export default function RiverMap({
           ))}
         </select>
       </div>
+
+      {/* flow legend, anchored like a map attribution */}
+      <div className="absolute bottom-2 left-2 flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/70 px-3 py-1.5 backdrop-blur-[2px]">
+        {flow.q === null ? (
+          <span className="text-xs text-slate-400">…</span>
+        ) : (
+          <>
+            <span className="text-sm font-semibold text-sky-300">
+              {kmh.toFixed(1)} km/h
+            </span>
+            <span className="text-[11px] text-slate-500" title={flow.status}>
+              {flow.status === "live" ? "●" : "◐"} {Math.round(flow.q)} m³/s
+            </span>
+          </>
+        )}
+      </div>
+      {flow.q !== null && flow.q > FLOW_WARNING_M3S && (
+        <div className="absolute left-1/2 top-2 -translate-x-1/2 rounded-full border border-red-500/60 bg-red-950/80 px-3 py-1 text-sm font-medium text-red-300 backdrop-blur-[2px]">
+          ⚠ no swimming
+        </div>
+      )}
     </div>
   );
 }

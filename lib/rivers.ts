@@ -87,10 +87,51 @@ export const spotIndex = (id: string) =>
   BASEL_SPOTS.findIndex((s) => s.id === id);
 
 /**
- * Approximate swim distance between two spots: straight-line hops along the
- * ordered spot chain.
+ * The swim line along the Kleinbasel shore, upstream → downstream, with
+ * intermediate waypoints so distances follow the river's curve instead of
+ * hopping point-to-point between spots. Entries tagged with `spot` anchor
+ * the corridor spots onto the line.
+ *
+ * SIMPLIFICATION: waypoints are hand-bulged toward the outside of the bend;
+ * a later version should trace the OSM waterway centerline.
+ */
+const SWIM_LINE: Array<{ lat: number; lon: number; spot?: string }> = [
+  { lat: 47.5551, lon: 7.6123, spot: "schwarzwaldbruecke" },
+  { lat: 47.5556, lon: 7.6084 },
+  { lat: 47.5563, lon: 7.6028 },
+  { lat: 47.5578, lon: 7.5962, spot: "wettsteinbruecke" },
+  { lat: 47.559, lon: 7.5932 },
+  { lat: 47.5605, lon: 7.5906, spot: "mittlere-bruecke" },
+  { lat: 47.5622, lon: 7.5882, spot: "kaserne" },
+  { lat: 47.5634, lon: 7.5867 },
+  { lat: 47.5648, lon: 7.5851, spot: "johanniterbruecke" },
+  { lat: 47.5668, lon: 7.5823 },
+  { lat: 47.5688, lon: 7.5788, spot: "dreirosen" },
+];
+
+const lineIndex = (id: string) => SWIM_LINE.findIndex((p) => p.spot === id);
+
+/**
+ * Swim distance between two spots, measured along the curved swim line.
+ * Falls back to straight hops along the spot chain for legacy spots that
+ * are not on the line (Birskopf, Breite).
  */
 export function distanceBetweenSpots(fromId: string, toId: string): number {
+  const la = lineIndex(fromId);
+  const lb = lineIndex(toId);
+  if (la !== -1 && lb !== -1) {
+    const [a, b] = la < lb ? [la, lb] : [lb, la];
+    let d = 0;
+    for (let i = a + 1; i <= b; i++) {
+      d += haversineMeters(
+        SWIM_LINE[i - 1].lat,
+        SWIM_LINE[i - 1].lon,
+        SWIM_LINE[i].lat,
+        SWIM_LINE[i].lon
+      );
+    }
+    return d;
+  }
   const from = spotIndex(fromId);
   const to = spotIndex(toId);
   if (from === -1 || to === -1) return 0;
