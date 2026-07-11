@@ -74,7 +74,7 @@ export default function Home() {
     : level.strokeMs;
 
   return (
-    <main className="mx-auto flex h-[100dvh] w-full max-w-2xl flex-col gap-2 overflow-y-auto px-4 pb-1 pt-2">
+    <main className="mx-auto flex h-[100dvh] w-full max-w-2xl flex-col gap-2 overflow-y-auto px-4 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))]">
       <header className="flex items-center justify-between gap-2">
         <h1 className="whitespace-nowrap bg-gradient-to-r from-sky-300 to-teal-300 bg-clip-text text-xl font-extrabold tracking-tight text-transparent">
           🌊 Rhyschwumm
