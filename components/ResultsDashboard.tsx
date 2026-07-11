@@ -49,6 +49,7 @@ export default function ResultsDashboard({
   sex: Sex;
 }) {
   const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const kcal = estimateKcal(vActive, duty, result.elapsedSeconds, weightKg, sex);
   const displayResult =
@@ -69,22 +70,19 @@ export default function ResultsDashboard({
       ? "\u{1F3C6} Out-swam the Rhy!"
       : `\u{1F3C1} Rhy wins \u2014 ${Math.round((vActive / gaugeLaneMs) * 100)}% of its pace`;
 
-  // Native share sheet where available (mobile); WhatsApp link otherwise.
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(summary)}`;
+
+  // System share sheet where available; WhatsApp link otherwise.
   const shareText = async () => {
     if (navigator.share) {
       try {
         await navigator.share({ text: summary });
-        return;
       } catch {
         // cancelled — nothing to do
       }
       return;
     }
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(summary)}`,
-      "_blank",
-      "noopener"
-    );
+    window.open(whatsappHref, "_blank", "noopener");
   };
 
   const copySummary = async () => {
@@ -202,34 +200,58 @@ export default function ResultsDashboard({
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => void shareText()}
-            className="rounded-xl bg-green-600 px-4 py-2 text-base font-medium text-white hover:bg-green-500"
+        <div className="mt-3 flex items-center gap-2">
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 rounded-xl bg-green-600 px-4 py-2.5 text-center text-base font-semibold text-white hover:bg-green-500"
           >
-            💬 Share
-          </button>
-          <button
-            onClick={makeCard}
-            title="Share as image — works with Google Health, Instagram, anywhere"
-            className="rounded-xl bg-sky-600 px-4 py-2 text-base font-medium text-white hover:bg-sky-500"
-          >
-            🖼 Card
-          </button>
-          <button
-            onClick={copySummary}
-            title="Copy text for a Strava description"
-            className="rounded-xl bg-slate-700 px-3.5 py-2 text-base font-medium text-white hover:bg-slate-600"
-          >
-            {copied ? "✓" : "📋"}
-          </button>
-          <button
-            onClick={downloadTcx}
-            title="Download .tcx — import into Strava or Garmin"
-            className="rounded-xl bg-slate-700 px-3.5 py-2 text-base font-medium text-white hover:bg-slate-600"
-          >
-            ⬇ .tcx
-          </button>
+            💬 WhatsApp
+          </a>
+          <div className="relative">
+            <button
+              onClick={() => setShareOpen((v) => !v)}
+              aria-expanded={shareOpen}
+              aria-label="More sharing options"
+              className="rounded-xl bg-slate-700 px-4 py-2.5 text-base font-medium text-white hover:bg-slate-600"
+            >
+              ⇪ ▾
+            </button>
+            {shareOpen && (
+              <div className="absolute bottom-12 right-0 z-20 w-48 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
+                {[
+                  {
+                    label: "⇪ Share…",
+                    run: () => void shareText(),
+                  },
+                  {
+                    label: "🖼 Image card",
+                    run: makeCard,
+                  },
+                  {
+                    label: copied ? "✓ Copied" : "📋 Copy text",
+                    run: () => void copySummary(),
+                  },
+                  {
+                    label: "⬇ .tcx file",
+                    run: downloadTcx,
+                  },
+                ].map(({ label, run }) => (
+                  <button
+                    key={label}
+                    onClick={() => {
+                      run();
+                      if (!label.startsWith("📋")) setShareOpen(false);
+                    }}
+                    className="block w-full px-4 py-3 text-left text-sm text-slate-200 hover:bg-slate-800"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -22,6 +22,7 @@ import type { ParsedTrack, SwimInput } from "@/lib/types";
 export default function Home() {
   const [track, setTrack] = useState<ParsedTrack | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [trackLabel, setTrackLabel] = useState<string>("");
   const [logInput, setLogInput] = useState<SwimInput | null>(null);
   const [logLabel, setLogLabel] = useState<string>("");
@@ -78,12 +79,29 @@ export default function Home() {
           🌊 Rhyschwumm
         </h1>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            onClick={() => setImportOpen(true)}
-            className="rounded-full border border-slate-700 bg-slate-800/60 px-3.5 py-2 text-xs font-medium text-slate-300 hover:text-white"
-          >
-            ⤒ Import
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-expanded={menuOpen}
+              aria-label="Menu"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-800/60 text-base text-slate-300 hover:text-white"
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-11 z-20 w-56 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setImportOpen(true);
+                  }}
+                  className="block w-full px-4 py-3 text-left text-sm text-slate-200 hover:bg-slate-800"
+                >
+                  ⤒ Import from Strava or file
+                </button>
+              </div>
+            )}
+          </div>
           <ProfileSettings profile={profile} onChange={updateProfile} />
         </div>
       </header>
