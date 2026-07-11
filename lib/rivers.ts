@@ -87,57 +87,39 @@ export const spotIndex = (id: string) =>
   BASEL_SPOTS.findIndex((s) => s.id === id);
 
 /**
- * The swim line along the Kleinbasel shore, upstream → downstream, with
- * intermediate waypoints so distances follow the river's curve instead of
- * hopping point-to-point between spots. Entries tagged with `spot` anchor
- * the corridor spots onto the line.
- *
- * SIMPLIFICATION: waypoints are hand-bulged toward the outside of the bend;
- * a later version should trace the OSM waterway centerline.
+ * Calibrated distances along the Kleinbasel shore, in meters downstream of
+ * the Tinguely entry. Anchored to public reference points instead of our
+ * rough spot coordinates (which overshot by ~25%):
+ *  - SLRG Basler Rheinschwimmen, Schaffhauserrheinweg (Tinguely) →
+ *    Leuengasse/Johanniterbruecke: 1.8 km official course; stairs-to-bridge
+ *    ≈ 1.9 km (slrg-basel.ch).
+ *  - Museum Tinguely → Dreirosenbruecke: ~2.5 km (basel.com).
+ * Intermediate marks split proportionally to the river geometry.
  */
-const SWIM_LINE: Array<{ lat: number; lon: number; spot?: string }> = [
-  { lat: 47.5551, lon: 7.6123, spot: "schwarzwaldbruecke" },
-  { lat: 47.5556, lon: 7.6084 },
-  { lat: 47.5563, lon: 7.6028 },
-  { lat: 47.5578, lon: 7.5962, spot: "wettsteinbruecke" },
-  { lat: 47.559, lon: 7.5932 },
-  { lat: 47.5605, lon: 7.5906, spot: "mittlere-bruecke" },
-  { lat: 47.5622, lon: 7.5882, spot: "kaserne" },
-  { lat: 47.5634, lon: 7.5867 },
-  { lat: 47.5648, lon: 7.5851, spot: "johanniterbruecke" },
-  { lat: 47.5668, lon: 7.5823 },
-  { lat: 47.5688, lon: 7.5788, spot: "dreirosen" },
-];
-
-const lineIndex = (id: string) => SWIM_LINE.findIndex((p) => p.spot === id);
+const SHORE_DIST: Record<string, number> = {
+  schwarzwaldbruecke: 0,
+  wettsteinbruecke: 990,
+  "mittlere-bruecke": 1400,
+  kaserne: 1650,
+  johanniterbruecke: 1900,
+  dreirosen: 2520,
+};
 
 /**
- * Swim distance between two spots, measured along the curved swim line.
- * Falls back to straight hops along the spot chain for legacy spots that
- * are not on the line (Birskopf, Breite).
+ * Swim distance between two spots along the Kleinbasel shore. Corridor
+ * spots use the calibrated table; legacy spots (Birskopf, Breite) fall
+ * back to straight hops along the spot chain.
  */
 export function distanceBetweenSpots(fromId: string, toId: string): number {
-  const la = lineIndex(fromId);
-  const lb = lineIndex(toId);
-  if (la !== -1 && lb !== -1) {
-    const [a, b] = la < lb ? [la, lb] : [lb, la];
-    let d = 0;
-    for (let i = a + 1; i <= b; i++) {
-      d += haversineMeters(
-        SWIM_LINE[i - 1].lat,
-        SWIM_LINE[i - 1].lon,
-        SWIM_LINE[i].lat,
-        SWIM_LINE[i].lon
-      );
-    }
-    return d;
-  }
+  const a = SHORE_DIST[fromId];
+  const b = SHORE_DIST[toId];
+  if (a !== undefined && b !== undefined) return Math.abs(b - a);
   const from = spotIndex(fromId);
   const to = spotIndex(toId);
   if (from === -1 || to === -1) return 0;
-  const [a, b] = from < to ? [from, to] : [to, from];
+  const [lo, hi] = from < to ? [from, to] : [to, from];
   let d = 0;
-  for (let i = a + 1; i <= b; i++) {
+  for (let i = lo + 1; i <= hi; i++) {
     d += haversineMeters(
       BASEL_SPOTS[i - 1].lat,
       BASEL_SPOTS[i - 1].lon,
@@ -147,3 +129,4 @@ export function distanceBetweenSpots(fromId: string, toId: string): number {
   }
   return d;
 }
+

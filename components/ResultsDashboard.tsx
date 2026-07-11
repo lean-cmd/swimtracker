@@ -123,6 +123,14 @@ export default function ResultsDashboard({
   return (
     <section className="space-y-3">
       <div className="rounded-2xl border border-sky-500/40 bg-gradient-to-br from-sky-500/20 via-teal-500/10 to-emerald-500/15 p-3">
+        {/* route total — updates with every entry/exit/time change */}
+        <div className="mb-2 flex items-baseline justify-between gap-2 text-xs text-slate-400">
+          <span className="truncate">{label || riverName}</span>
+          <span className="shrink-0 text-sm font-semibold text-slate-100">
+            {formatDistance(result.gpsDistanceMeters)} · {fmtDur(result.elapsedSeconds)}
+          </span>
+        </div>
+
         {/* the three numbers that matter */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
