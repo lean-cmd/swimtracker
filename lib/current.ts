@@ -1,3 +1,4 @@
+import { INTENSITY, clampLevel } from "./energy";
 import type { CorrectionResult, SwimInput } from "./types";
 
 /**
@@ -19,6 +20,46 @@ import type { CorrectionResult, SwimInput } from "./types";
  *    and floating past it come out the same. A segment-by-segment version
  *    of this same formula would fix that.
  */
+/**
+ * LOG-mode attribution, intensity-forward: the slider fixes your typical
+ * stroke speed and active share, which yields YOUR distance directly
+ * (v × duty × T, capped at the route). The river gets the remainder, and
+ * its implied speed is the deduction — so a stronger setting genuinely
+ * moves meters from the Rhy's column into yours.
+ */
+export function resultFromIntensity(
+  input: SwimInput,
+  effortLevel: number
+): CorrectionResult {
+  const { distanceMeters, elapsedSeconds } = input;
+  const { strokeMs, duty } = INTENSITY[clampLevel(effortLevel)];
+
+  const gpsSpeedMs = distanceMeters / elapsedSeconds;
+  const swimmerDistanceMeters = Math.min(
+    distanceMeters,
+    strokeMs * duty * elapsedSeconds
+  );
+  const currentDistanceMeters = distanceMeters - swimmerDistanceMeters;
+  const swimmerSpeedMs = swimmerDistanceMeters / elapsedSeconds;
+  const floating = effortLevel <= 1 || swimmerSpeedMs < 0.05;
+
+  return {
+    gpsDistanceMeters: distanceMeters,
+    elapsedSeconds,
+    gpsSpeedMs,
+    // Implied river speed along the route — deduced, not the gauge value.
+    effectiveCurrentMs: currentDistanceMeters / elapsedSeconds,
+    currentDistanceMeters,
+    swimmerDistanceMeters,
+    swimmerSpeedMs,
+    stillWaterPaceSecPer100m: floating ? null : 100 / strokeMs,
+    gpsPaceSecPer100m: 100 / gpsSpeedMs,
+    currentBoostPercent: (currentDistanceMeters / distanceMeters) * 100,
+    floating,
+    impliedCurrentMs: gpsSpeedMs,
+  };
+}
+
 export function correctForCurrent(
   input: SwimInput,
   currentSpeedMs: number

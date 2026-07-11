@@ -30,3 +30,33 @@ body {
 .flow-dash {
   animation: riverflow var(--flow-dur, 6s) linear infinite;
 }
+
+/* Intensity slider: oversized thumb for thumbs. */
+.intensity-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: #334155;
+  outline: none;
+}
+.intensity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 26px;
+  width: 26px;
+  border-radius: 9999px;
+  background: #38bdf8;
+  border: 3px solid #0f172a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.intensity-slider::-moz-range-thumb {
+  height: 26px;
+  width: 26px;
+  border-radius: 9999px;
+  background: #38bdf8;
+  border: 3px solid #0f172a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}

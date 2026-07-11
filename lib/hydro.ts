@@ -178,11 +178,10 @@ const DATA_BS_URL =
 /**
  * Fetch the latest Rhine discharge from data.bs.ch (runs in the browser).
  *
- * Parsing is defensive: we look for a discharge-like key first
- * ("abfluss…"/"flow"/"durchfluss"), then fall back to any numeric value in a
- * plausible discharge range (Rhine at Basel stays within ~300–6000 m³/s).
- * TODO: pin the exact field names once verified against the live API
- * (the dev sandbox couldn't reach data.bs.ch).
+ * Dataset 100089 documents the columns as `timestamp`, `pegel` (water
+ * level, m) and `abfluss` (discharge, m³/s) — those are read first, with a
+ * defensive fallback (any discharge-like key, then any numeric value in the
+ * plausible 300–6000 m³/s range) in case the portal renames fields.
  */
 export async function fetchLiveFlow(): Promise<LiveFlow> {
   const res = await fetch(DATA_BS_URL);
@@ -191,8 +190,10 @@ export async function fetchLiveFlow(): Promise<LiveFlow> {
   const record: Record<string, unknown> | undefined = data?.results?.[0];
   if (!record) throw new Error("No records returned from data.bs.ch");
 
-  let discharge: number | null = null;
-  let levelM: number | null = null;
+  let discharge: number | null =
+    typeof record.abfluss === "number" ? record.abfluss : null;
+  let levelM: number | null =
+    typeof record.pegel === "number" ? record.pegel : null;
   for (const [key, value] of Object.entries(record)) {
     if (typeof value !== "number") continue;
     if (discharge === null && /abfluss|durchfluss|flow/i.test(key)) {
@@ -213,7 +214,8 @@ export async function fetchLiveFlow(): Promise<LiveFlow> {
     throw new Error("Could not find a discharge field in the response");
   }
 
-  let timestamp: string | null = null;
+  let timestamp: string | null =
+    typeof record.timestamp === "string" ? record.timestamp : null;
   for (const [key, value] of Object.entries(record)) {
     if (typeof value === "string" && /time|zeit|date/i.test(key)) {
       timestamp = value;

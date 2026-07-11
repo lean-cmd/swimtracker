@@ -1,12 +1,11 @@
 "use client";
 
-/**
- * 4-point swim effort scale, text only. FLOAT means the river did it all
- * (drives the float attribution); the rest adjust the calorie model's
- * efficiency factor — same speed fought harder burns more.
- */
-export const EFFORT_LABELS = ["Float", "Easy", "Steady", "Hard"];
+import { INTENSITY } from "@/lib/energy";
 
+/**
+ * Intensity as a finger slider: Float · Pauses · Steady · Strong.
+ * The thumb is oversized for touch; labels double as tap targets.
+ */
 export default function EffortScale({
   value,
   onChange,
@@ -15,21 +14,30 @@ export default function EffortScale({
   onChange: (level: number) => void;
 }) {
   return (
-    <div className="flex flex-1 overflow-hidden rounded-xl border border-slate-700 text-xs">
-      {EFFORT_LABELS.map((label, i) => (
-        <button
-          key={label}
-          onClick={() => onChange(i + 1)}
-          aria-pressed={value === i + 1}
-          className={`flex-1 py-2.5 uppercase tracking-wide transition-colors ${
-            value === i + 1
-              ? "bg-sky-600 font-semibold text-white"
-              : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          {label}
-        </button>
-      ))}
+    <div className="flex-1 rounded-xl border border-slate-700 bg-slate-800/60 px-3 pb-1 pt-2">
+      <input
+        type="range"
+        min="1"
+        max="4"
+        step="1"
+        value={value}
+        aria-label="Swim intensity"
+        onChange={(e) => onChange(parseInt(e.target.value, 10))}
+        className="intensity-slider w-full"
+      />
+      <div className="flex justify-between text-[11px] uppercase tracking-wide">
+        {[1, 2, 3, 4].map((l) => (
+          <button
+            key={l}
+            onClick={() => onChange(l)}
+            className={`px-1 py-1 ${
+              value === l ? "font-bold text-sky-300" : "text-slate-500"
+            }`}
+          >
+            {INTENSITY[l].label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
