@@ -15,7 +15,7 @@ export default function EffortScale({
   onChange: (level: number) => void;
 }) {
   return (
-    <div className="flex h-full flex-1 flex-col justify-center gap-0.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
+    <div className="flex h-full min-w-0 flex-1 flex-col justify-center gap-0.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
       <input
         type="range"
         min="1"
@@ -26,22 +26,24 @@ export default function EffortScale({
         onChange={(e) => onChange(parseFloat(e.target.value))}
         className="intensity-slider w-full"
       />
-      <div className="flex justify-between text-[11px] uppercase tracking-wide">
+      {/* fixed-width cells + constant font weight: highlighting must never
+          change layout (CLS) while the thumb crosses an anchor */}
+      <div className="flex h-4 text-[11px] font-semibold uppercase leading-4 tracking-wide">
         {[1, 2, 3, 4].map((l) => (
           <button
             key={l}
             onClick={() => onChange(l)}
-            className={`px-1 py-0.5 ${
-              Math.abs(value - l) < 0.5
-                ? "font-bold text-sky-300"
-                : "text-slate-500"
+            className={`w-1/4 ${
+              l === 1 ? "text-left" : l === 4 ? "text-right" : "text-center"
+            } ${
+              Math.abs(value - l) <= 0.5 ? "text-sky-300" : "text-slate-500/80"
             }`}
           >
             {INTENSITY[l].label}
           </button>
         ))}
       </div>
-      <div className="truncate text-center text-[10px] text-slate-400">
+      <div className="h-4 truncate text-center text-[10px] leading-4 text-slate-400">
         {describeIntensity(value)}
       </div>
     </div>
