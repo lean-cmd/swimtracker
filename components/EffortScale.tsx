@@ -1,28 +1,29 @@
 "use client";
 
-import { INTENSITY } from "@/lib/energy";
+import { INTENSITY, describeIntensity } from "@/lib/energy";
 
 /**
- * Intensity as a finger slider: Float · Pauses · Steady · Strong.
- * The thumb is oversized for touch; labels double as tap targets.
+ * Continuous intensity slider: anchors at Float / Pauses / Steady / Strong,
+ * but any position between them counts — stroke speed and active share
+ * interpolate. A one-line description narrates the current position.
  */
 export default function EffortScale({
   value,
   onChange,
 }: {
-  value: number; // 1–4
+  value: number; // 1.0 – 4.0, continuous
   onChange: (level: number) => void;
 }) {
   return (
-    <div className="flex h-full flex-1 flex-col justify-center gap-1 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
+    <div className="flex h-full flex-1 flex-col justify-center gap-0.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
       <input
         type="range"
         min="1"
         max="4"
-        step="1"
+        step="0.05"
         value={value}
         aria-label="Swim intensity"
-        onChange={(e) => onChange(parseInt(e.target.value, 10))}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
         className="intensity-slider w-full"
       />
       <div className="flex justify-between text-[11px] uppercase tracking-wide">
@@ -31,12 +32,17 @@ export default function EffortScale({
             key={l}
             onClick={() => onChange(l)}
             className={`px-1 py-0.5 ${
-              value === l ? "font-bold text-sky-300" : "text-slate-500"
+              Math.abs(value - l) < 0.5
+                ? "font-bold text-sky-300"
+                : "text-slate-500"
             }`}
           >
             {INTENSITY[l].label}
           </button>
         ))}
+      </div>
+      <div className="truncate text-center text-[10px] text-slate-400">
+        {describeIntensity(value)}
       </div>
     </div>
   );

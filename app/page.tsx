@@ -14,7 +14,7 @@ import ResultsDashboard from "@/components/ResultsDashboard";
 import { MoreIcon } from "@/components/icons";
 import RouteMap from "@/components/RouteMap";
 import { correctForCurrent, resultFromIntensity } from "@/lib/current";
-import { DEFAULT_WEIGHT_KG, INTENSITY, clampLevel } from "@/lib/energy";
+import { DEFAULT_WEIGHT_KG, intensityAt } from "@/lib/energy";
 import { SWIM_LANE_FACTOR } from "@/lib/hydro";
 import { useRhineFlow } from "@/lib/useRhineFlow";
 import { RIVER_PRESETS } from "@/lib/rivers";
@@ -43,8 +43,8 @@ export default function Home() {
   const currentMs = flow.currentMs;
 
   const river = RIVER_PRESETS[0];
-  const intendedFloat = effort === 1;
-  const level = INTENSITY[clampLevel(effort)];
+  const intendedFloat = effort <= 1.15;
+  const level = intensityAt(effort);
 
   // Imported tracks calculate from data (current subtracted from GPS);
   // logged swims run intensity-forward (your strokes fix your share,

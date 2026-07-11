@@ -44,6 +44,43 @@ export const INTENSITY: Record<number, IntensityLevel> = {
 
 export const clampLevel = (l: number) => Math.min(4, Math.max(1, Math.round(l)));
 
+const DESCRIPTIONS: Record<number, string> = {
+  1: "drifting — the Rhy does all the work",
+  2: "swim a stretch, float a stretch (~half active)",
+  3: "continuous relaxed strokes",
+  4: "continuous fast strokes",
+};
+
+/**
+ * The slider is continuous: between anchors, stroke speed and duty are
+ * interpolated linearly — 2.5 means genuinely half-way between "pauses"
+ * and "steady", in meters and in calories.
+ */
+export function intensityAt(level: number): IntensityLevel {
+  const l = Math.min(4, Math.max(1, level));
+  const lo = Math.floor(l);
+  const hi = Math.ceil(l);
+  const t = l - lo;
+  const a = INTENSITY[lo];
+  const b = INTENSITY[hi];
+  return {
+    strokeMs: a.strokeMs + (b.strokeMs - a.strokeMs) * t,
+    duty: a.duty + (b.duty - a.duty) * t,
+    label: t < 0.5 ? a.label : b.label,
+  };
+}
+
+/** Human sentence for the current slider position. */
+export function describeIntensity(level: number): string {
+  const l = Math.min(4, Math.max(1, level));
+  const lo = Math.floor(l);
+  const hi = Math.ceil(l);
+  const t = l - lo;
+  if (t < 0.15 || lo === hi) return DESCRIPTIONS[lo];
+  if (t > 0.85) return DESCRIPTIONS[hi];
+  return `between ${INTENSITY[lo].label.toLowerCase()} and ${INTENSITY[hi].label.toLowerCase()}`;
+}
+
 export type Sex = "f" | "m" | "u";
 const SEX_FACTOR: Record<Sex, number> = { f: 0.92, m: 1.0, u: 1.0 };
 

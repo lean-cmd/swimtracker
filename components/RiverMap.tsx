@@ -236,15 +236,6 @@ export default function RiverMap({
       <svg viewBox={`90 ${vbY} 910 ${vbH}`} className="block h-full w-full">
         {/* ——— water ——— */}
         <path d={CENTERLINE} fill="none" stroke="#16323e" strokeWidth={80} strokeLinecap="round" />
-        {/* danger stretch upstream, toward the lock */}
-        <path
-          d="M 1090,-160 C 1000,60 935,220 878,298"
-          fill="none"
-          stroke="#7f1d1d"
-          strokeWidth={80}
-          strokeLinecap="round"
-          opacity={0.25}
-        />
         {/* recommended corridor along the Kleinbasel shore */}
         <path
           d={SHORE_PATH}
@@ -254,28 +245,53 @@ export default function RiverMap({
           strokeLinecap="round"
           opacity={0.14}
         />
-        {/* slow layered drift — broad sheets of water, staggered */}
+        {/* water: braided shimmer threads drifting downstream, offset across
+            the band so it reads as current, not lane markings */}
         <path
           d={CENTERLINE}
           fill="none"
           stroke="#7dd3fc"
-          strokeWidth={26}
+          strokeWidth={30}
           strokeLinecap="round"
-          strokeDasharray="60 90"
-          opacity={0.07}
+          strokeDasharray="55 70"
+          opacity={0.045}
           className="flow-dash"
           style={{ ["--flow-dur" as string]: flowDur }}
         />
         <path
           d={CENTERLINE}
           fill="none"
-          stroke="#7dd3fc"
-          strokeWidth={10}
+          stroke="#a5f3fc"
+          strokeWidth={3}
           strokeLinecap="round"
-          strokeDasharray="34 116"
-          opacity={0.14}
+          strokeDasharray="25 100"
+          opacity={0.22}
           className="flow-dash"
-          style={{ ["--flow-dur" as string]: flowDur, animationDelay: "-4s" }}
+          style={{ ["--flow-dur" as string]: flowDur, animationDelay: "-2.5s" }}
+        />
+        <path
+          d={CENTERLINE}
+          fill="none"
+          stroke="#7dd3fc"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeDasharray="15 110"
+          opacity={0.18}
+          transform="translate(11,9)"
+          className="flow-dash"
+          style={{ ["--flow-dur" as string]: `calc(${flowDur} * 1.3)`, animationDelay: "-7s" }}
+        />
+        <path
+          d={CENTERLINE}
+          fill="none"
+          stroke="#bae6fd"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray="35 90"
+          opacity={0.12}
+          transform="translate(-12,-8)"
+          className="flow-dash"
+          style={{ ["--flow-dur" as string]: `calc(${flowDur} * 0.85)`, animationDelay: "-11s" }}
         />
 
         {/* ——— ferries: dotted cable + gondola ——— */}

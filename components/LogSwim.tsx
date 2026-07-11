@@ -64,8 +64,8 @@ export default function LogSwim({
   }, []);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div className="relative min-h-[210px] flex-1">
+    <div className="flex flex-col gap-2">
+      <div className="relative h-[38dvh] min-h-[210px]">
         <RiverMap
           entry={entry}
           exit={exit}
@@ -75,7 +75,7 @@ export default function LogSwim({
         />
       </div>
 
-      <div className="flex h-[76px] shrink-0 items-stretch gap-2">
+      <div className="flex h-[88px] shrink-0 items-stretch gap-2">
         {/* swipe up/down to set the time — no keyboard needed */}
         <div className="flex flex-1 flex-col">
           <span className="pl-2 pb-0.5 text-[9px] font-medium uppercase tracking-widest text-slate-500">

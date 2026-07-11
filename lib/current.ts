@@ -1,4 +1,4 @@
-import { INTENSITY, clampLevel } from "./energy";
+import { intensityAt } from "./energy";
 import type { CorrectionResult, SwimInput } from "./types";
 
 /**
@@ -32,7 +32,7 @@ export function resultFromIntensity(
   effortLevel: number
 ): CorrectionResult {
   const { distanceMeters, elapsedSeconds } = input;
-  const { strokeMs, duty } = INTENSITY[clampLevel(effortLevel)];
+  const { strokeMs, duty } = intensityAt(effortLevel);
 
   const gpsSpeedMs = distanceMeters / elapsedSeconds;
   const swimmerDistanceMeters = Math.min(
@@ -41,7 +41,7 @@ export function resultFromIntensity(
   );
   const currentDistanceMeters = distanceMeters - swimmerDistanceMeters;
   const swimmerSpeedMs = swimmerDistanceMeters / elapsedSeconds;
-  const floating = effortLevel <= 1 || swimmerSpeedMs < 0.05;
+  const floating = effortLevel <= 1.15 || swimmerSpeedMs < 0.05;
 
   return {
     gpsDistanceMeters: distanceMeters,
