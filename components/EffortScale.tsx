@@ -14,7 +14,7 @@ export default function EffortScale({
   onChange: (level: number) => void;
 }) {
   return (
-    <div className="flex h-full flex-1 flex-col justify-center rounded-xl border border-slate-700 bg-slate-800/60 px-3 pb-0.5 pt-1.5">
+    <div className="flex h-full flex-1 flex-col justify-center gap-1 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
       <input
         type="range"
         min="1"
@@ -25,7 +25,7 @@ export default function EffortScale({
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
         className="intensity-slider w-full"
       />
-      <div className="flex justify-between text-[10px] uppercase tracking-wide">
+      <div className="flex justify-between text-[11px] uppercase tracking-wide">
         {[1, 2, 3, 4].map((l) => (
           <button
             key={l}

@@ -45,9 +45,9 @@ const SHORT_NAME: Record<string, string> = {
 
 /** River centerline, upstream → downstream (band + flow animation). */
 const CENTERLINE =
-  "M 1015,55 C 985,100 940,200 860,315 C 790,378 700,455 595,482 " +
+  "M 1090,-160 C 1000,60 940,200 860,315 C 790,378 700,455 595,482 " +
   "C 495,507 445,472 398,443 C 350,413 320,398 293,358 " +
-  "C 262,312 250,275 240,235 C 224,180 214,120 206,-30";
+  "C 262,312 250,275 240,235 C 222,160 210,40 196,-320";
 
 /** Corridor / swim line along the inner (Kleinbasel) shore. */
 const SHORE_PATH =
@@ -154,7 +154,24 @@ export default function RiverMap({
   const flowDur = `${(60 / Math.max(1.5, kmh)).toFixed(1)}s`;
 
   const shoreRef = useRef<SVGPathElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const [arc, setArc] = useState<Arc | null>(null);
+  // Match the viewBox to the container's aspect: taller screens see more
+  // riverscape above/below instead of cropping the markers away.
+  const [vbH, setVbH] = useState(564);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0 && height > 0) {
+        setVbH(Math.min(1600, Math.max(440, (910 * height) / width)));
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const vbY = 294 - vbH / 2;
 
   useEffect(() => {
     const el = shoreRef.current;
@@ -215,13 +232,13 @@ export default function RiverMap({
     "w-full appearance-none rounded-lg border border-white/15 bg-slate-900/75 py-2 pl-2 pr-7 text-base text-slate-100 backdrop-blur";
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-900 to-sky-950 shadow-lg">
-      <svg viewBox="90 12 910 564" className="block h-auto w-full">
+    <div ref={boxRef} className="relative h-full w-full overflow-hidden rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-900 to-sky-950 shadow-lg">
+      <svg viewBox={`90 ${vbY} 910 ${vbH}`} className="block h-full w-full">
         {/* ——— water ——— */}
         <path d={CENTERLINE} fill="none" stroke="#16323e" strokeWidth={80} strokeLinecap="round" />
         {/* danger stretch upstream, toward the lock */}
         <path
-          d="M 1015,55 C 980,115 930,225 878,298"
+          d="M 1090,-160 C 1000,60 935,220 878,298"
           fill="none"
           stroke="#7f1d1d"
           strokeWidth={80}

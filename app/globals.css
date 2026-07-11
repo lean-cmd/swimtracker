@@ -35,7 +35,7 @@ body {
 .intensity-slider {
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
+  height: 10px;
   border-radius: 9999px;
   background: #334155;
   outline: none;
@@ -43,8 +43,8 @@ body {
 .intensity-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  height: 26px;
-  width: 26px;
+  height: 34px;
+  width: 34px;
   border-radius: 9999px;
   background: #38bdf8;
   border: 3px solid #0f172a;
@@ -52,8 +52,8 @@ body {
   cursor: pointer;
 }
 .intensity-slider::-moz-range-thumb {
-  height: 26px;
-  width: 26px;
+  height: 34px;
+  width: 34px;
   border-radius: 9999px;
   background: #38bdf8;
   border: 3px solid #0f172a;

@@ -64,18 +64,20 @@ export default function LogSwim({
   }, []);
 
   return (
-    <div className="space-y-3">
-      <RiverMap
-        entry={entry}
-        exit={exit}
-        onEntry={(id) => setSpots(id, exit)}
-        onExit={(id) => setSpots(entry, id)}
-        flow={flow}
-      />
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div className="relative min-h-[210px] flex-1">
+        <RiverMap
+          entry={entry}
+          exit={exit}
+          onEntry={(id) => setSpots(id, exit)}
+          onExit={(id) => setSpots(entry, id)}
+          flow={flow}
+        />
+      </div>
 
-      <div className="flex items-stretch gap-2">
+      <div className="flex h-[76px] shrink-0 items-stretch gap-2">
         {/* swipe up/down to set the time — no keyboard needed */}
-        <div className="flex flex-col">
+        <div className="flex flex-1 flex-col">
           <span className="pl-2 pb-0.5 text-[9px] font-medium uppercase tracking-widest text-slate-500">
             Time
           </span>
@@ -103,16 +105,16 @@ export default function LogSwim({
           }}
           onPointerUp={() => (dragRef.current = null)}
           onPointerCancel={() => (dragRef.current = null)}
-          className="flex flex-1 cursor-ns-resize touch-none select-none items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3"
+          className="flex flex-1 cursor-ns-resize touch-none select-none items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3"
         >
-          <span className="flex flex-col text-[8px] leading-[7px] text-slate-500">
+          <span className="flex flex-col text-[9px] leading-[9px] text-slate-500">
             <span>▲</span>
             <span>▼</span>
           </span>
-          <span className="w-10 text-center text-xl font-semibold text-slate-100">
+          <span className="w-12 text-center text-2xl font-bold text-slate-100">
             {minutes}
           </span>
-          <span className="text-xs text-slate-500">min</span>
+          <span className="text-sm text-slate-500">min</span>
         </div>
         </div>
         <div className="flex flex-1 flex-col">
