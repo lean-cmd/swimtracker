@@ -45,9 +45,9 @@ const SHORT_NAME: Record<string, string> = {
 
 /** River centerline, upstream → downstream (band + flow animation). */
 const CENTERLINE =
-  "M 960,150 C 920,240 900,280 860,315 C 790,378 700,455 595,482 " +
+  "M 1015,55 C 985,100 940,200 860,315 C 790,378 700,455 595,482 " +
   "C 495,507 445,472 398,443 C 350,413 320,398 293,358 " +
-  "C 262,312 250,275 240,235 C 227,190 220,150 214,85";
+  "C 262,312 250,275 240,235 C 224,180 214,120 206,-30";
 
 /** Corridor / swim line along the inner (Kleinbasel) shore. */
 const SHORE_PATH =
@@ -212,16 +212,16 @@ export default function RiverMap({
 
   // 16px picker text so iOS Safari doesn't zoom on focus.
   const selectClass =
-    "w-full appearance-none rounded-lg border border-white/15 bg-slate-900/75 px-2 py-2 text-base text-slate-100 backdrop-blur";
+    "w-full appearance-none rounded-lg border border-white/15 bg-slate-900/75 py-2 pl-2 pr-7 text-base text-slate-100 backdrop-blur";
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-900 to-sky-950 shadow-lg">
-      <svg viewBox="0 0 1000 620" className="block h-auto w-full">
+      <svg viewBox="90 12 910 564" className="block h-auto w-full">
         {/* ——— water ——— */}
         <path d={CENTERLINE} fill="none" stroke="#16323e" strokeWidth={80} strokeLinecap="round" />
         {/* danger stretch upstream, toward the lock */}
         <path
-          d="M 960,150 C 930,218 912,262 878,298"
+          d="M 1015,55 C 980,115 930,225 878,298"
           fill="none"
           stroke="#7f1d1d"
           strokeWidth={80}
@@ -414,6 +414,9 @@ export default function RiverMap({
             </option>
           ))}
         </select>
+        <span aria-hidden className="pointer-events-none absolute right-3 text-xs text-slate-400">
+          ▾
+        </span>
       </div>
       <div className="absolute bottom-2 right-2 flex w-[48%] max-w-[250px] items-center gap-1.5 rounded-xl bg-slate-900/40 p-1 backdrop-blur-[2px]">
         <WickelfischIcon className="h-5 w-7 shrink-0" />
@@ -429,6 +432,9 @@ export default function RiverMap({
             </option>
           ))}
         </select>
+        <span aria-hidden className="pointer-events-none absolute right-3 text-xs text-slate-400">
+          ▾
+        </span>
       </div>
 
       {/* flow legend, anchored like a map attribution */}

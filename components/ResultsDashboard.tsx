@@ -2,17 +2,11 @@
 
 import { useState } from "react";
 import type { CorrectionResult } from "@/lib/types";
-import {
-  formatDistance,
-  formatDuration,
-  formatPace,
-  formatSpeed,
-} from "@/lib/format";
+import { formatDistance, formatPace } from "@/lib/format";
 import { estimateKcal, type Sex } from "@/lib/energy";
 import { buildTcx } from "@/lib/tcx";
 import { buildStravaSummary } from "@/lib/summary";
-import StatCard from "./StatCard";
-import { SwimmerIcon } from "./icons";
+import { ShareIcon, SwimmerIcon } from "./icons";
 import { shareCard } from "@/lib/shareCard";
 import { formatDuration as fmtDur } from "@/lib/format";
 
@@ -214,15 +208,16 @@ export default function ResultsDashboard({
               onClick={() => setShareOpen((v) => !v)}
               aria-expanded={shareOpen}
               aria-label="More sharing options"
-              className="rounded-xl bg-slate-700 px-4 py-2 text-base font-medium text-white hover:bg-slate-600"
+              className="flex items-center gap-1 rounded-xl bg-slate-700 px-4 py-2 text-base font-medium text-white hover:bg-slate-600"
             >
-              ⇪ ▾
+              <ShareIcon className="h-5 w-5" />
+              <span className="text-xs">▾</span>
             </button>
             {shareOpen && (
               <div className="absolute bottom-12 right-0 z-20 w-48 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
                 {[
                   {
-                    label: "⇪ Share…",
+                    label: "Share…",
                     run: () => void shareText(),
                   },
                   {
@@ -261,52 +256,6 @@ export default function ResultsDashboard({
         </div>
       )}
 
-      <details>
-        <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-200">
-          📊
-        </summary>
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-          <StatCard
-            label={isGps ? "GPS distance" : "Route (est.)"}
-            value={formatDistance(result.gpsDistanceMeters)}
-          />
-          <StatCard
-            label="Time"
-            value={formatDuration(result.elapsedSeconds)}
-          />
-          <StatCard
-            label="Energy"
-            value={`≈ ${Math.round(kcal)} kcal`}
-            highlight
-          />
-          <StatCard
-            label={isGps ? "GPS speed" : "Speed over ground"}
-            value={formatSpeed(result.gpsSpeedMs)}
-            sub={formatPace(result.gpsPaceSecPer100m)}
-          />
-          <StatCard
-            label={isGps ? "Current along route" : "River share (implied)"}
-            value={`${result.effectiveCurrentMs.toFixed(2)} m/s`}
-          />
-          <StatCard
-            label="Speed while swimming"
-            value={
-              displayResult.floating
-                ? "~0 m/s"
-                : formatSpeed(displayResult.swimmerSpeedMs)
-            }
-            sub={
-              displayResult.stillWaterPaceSecPer100m
-                ? formatPace(displayResult.stillWaterPaceSecPer100m)
-                : undefined
-            }
-            highlight
-          />
-        </div>
-        <pre className="mt-3 whitespace-pre-wrap break-words rounded-xl border border-slate-700 bg-slate-800/60 p-3 text-xs leading-relaxed text-slate-300">
-          {summary}
-        </pre>
-      </details>
     </section>
   );
 }

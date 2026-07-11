@@ -80,3 +80,24 @@ export function MapWickelfisch({ x, y }: { x: number; y: number }) {
     </g>
   );
 }
+
+/** iOS-style share: square with arrow rising out. */
+export function ShareIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M8 7.5 H6.5 A2.5 2.5 0 0 0 4 10 v8.5 A2.5 2.5 0 0 0 6.5 21 h11 a2.5 2.5 0 0 0 2.5 -2.5 V10 a2.5 2.5 0 0 0 -2.5 -2.5 H16" />
+      <path d="M12 14.5 V2.8 M8.3 6.2 L12 2.5 L15.7 6.2" />
+    </svg>
+  );
+}
+
+/** Vertical kebab "more" menu. */
+export function MoreIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <circle cx="12" cy="5" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="12" cy="19" r="2" />
+    </svg>
+  );
+}

@@ -75,6 +75,10 @@ export default function LogSwim({
 
       <div className="flex items-stretch gap-2">
         {/* swipe up/down to set the time — no keyboard needed */}
+        <div className="flex flex-col">
+          <span className="pl-2 pb-0.5 text-[9px] font-medium uppercase tracking-widest text-slate-500">
+            Time
+          </span>
         <div
           role="slider"
           aria-label="Minutes in the water — swipe up or down"
@@ -99,7 +103,7 @@ export default function LogSwim({
           }}
           onPointerUp={() => (dragRef.current = null)}
           onPointerCancel={() => (dragRef.current = null)}
-          className="flex shrink-0 cursor-ns-resize touch-none select-none items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3"
+          className="flex flex-1 cursor-ns-resize touch-none select-none items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3"
         >
           <span className="flex flex-col text-[8px] leading-[7px] text-slate-500">
             <span>▲</span>
@@ -110,7 +114,13 @@ export default function LogSwim({
           </span>
           <span className="text-xs text-slate-500">min</span>
         </div>
-        <EffortScale value={effort} onChange={onEffortChange} />
+        </div>
+        <div className="flex flex-1 flex-col">
+          <span className="pl-2 pb-0.5 text-[9px] font-medium uppercase tracking-widest text-slate-500">
+            Effort
+          </span>
+          <EffortScale value={effort} onChange={onEffortChange} />
+        </div>
       </div>
     </div>
   );

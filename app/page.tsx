@@ -11,6 +11,7 @@ import ProfileSettings, {
   type Profile,
 } from "@/components/ProfileSettings";
 import ResultsDashboard from "@/components/ResultsDashboard";
+import { MoreIcon } from "@/components/icons";
 import RouteMap from "@/components/RouteMap";
 import { correctForCurrent, resultFromIntensity } from "@/lib/current";
 import { DEFAULT_WEIGHT_KG, INTENSITY, clampLevel } from "@/lib/energy";
@@ -84,9 +85,9 @@ export default function Home() {
               onClick={() => setMenuOpen((v) => !v)}
               aria-expanded={menuOpen}
               aria-label="Menu"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-800/60 text-base text-slate-300 hover:text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-800/60 text-slate-300 hover:text-white"
             >
-              ⋯
+              <MoreIcon className="h-5 w-5" />
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-11 z-20 w-56 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
