@@ -73,7 +73,7 @@ export default function Home() {
     : level.strokeMs;
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-3 px-4 py-4">
+    <main className="mx-auto flex h-[100dvh] w-full max-w-2xl flex-col gap-2 overflow-y-auto px-4 pb-1 pt-2">
       <header className="flex items-center justify-between gap-2">
         <h1 className="whitespace-nowrap bg-gradient-to-r from-sky-300 to-teal-300 bg-clip-text text-xl font-extrabold tracking-tight text-transparent">
           🌊 Rhyschwumm
@@ -164,31 +164,25 @@ export default function Home() {
         />
       )}
 
-      <footer className="space-y-1 border-t border-slate-800 pt-2 text-center text-[11px] text-slate-600">
-        <div className="text-slate-500">
-          Mit ❤️ z&apos;Basel gmacht — am Rhy dehei 🇨🇭
-        </div>
-        <div>
-          ≈ estimates ·{" "}
-          <a
-            href="https://www.bs.ch"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline-offset-2 hover:underline"
-          >
-            bs.ch rules
-          </a>{" "}
-          ·{" "}
-          <a
-            href="https://www.bachapp.ch"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline-offset-2 hover:underline"
-          >
-            BachApp
-          </a>{" "}
-          · data.bs.ch
-        </div>
+      <footer className="mt-auto pt-1 text-center text-[10px] text-slate-600">
+        gmacht z&apos;Basel am Rhy 🇨🇭 ·{" "}
+        <a
+          href="https://www.bs.ch"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline-offset-2 hover:underline"
+        >
+          bs.ch
+        </a>{" "}
+        ·{" "}
+        <a
+          href="https://www.bachapp.ch"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline-offset-2 hover:underline"
+        >
+          BachApp
+        </a>
       </footer>
     </main>
   );

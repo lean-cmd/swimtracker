@@ -24,6 +24,7 @@ export default function LogSwim({
   const [entry, setEntry] = useState<string>("schwarzwaldbruecke");
   const [exit, setExit] = useState<string>("johanniterbruecke");
   const [minutes, setMinutes] = useState("25");
+  const dragRef = useRef<{ y: number; val: number } | null>(null);
 
   const emit = (nextEntry: string, nextExit: string, nextMinutes: string) => {
     const distance =
@@ -72,23 +73,43 @@ export default function LogSwim({
         flow={flow}
       />
 
-      <div className="flex items-stretch gap-3">
-        <label className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3">
-          <span aria-hidden>⏱️</span>
-          <input
-            type="number"
-            min="1"
-            step="1"
-            value={minutes}
-            aria-label="Minutes in the water"
-            onChange={(e) => {
-              setMinutes(e.target.value);
-              emit(entry, exit, e.target.value);
-            }}
-            className="w-14 bg-transparent text-base text-slate-100 outline-none"
-          />
+      <div className="flex items-stretch gap-2">
+        {/* swipe up/down to set the time — no keyboard needed */}
+        <div
+          role="slider"
+          aria-label="Minutes in the water — swipe up or down"
+          aria-valuenow={parseFloat(minutes) || 0}
+          aria-valuemin={1}
+          aria-valuemax={180}
+          onPointerDown={(e) => {
+            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            dragRef.current = { y: e.clientY, val: parseFloat(minutes) || 25 };
+          }}
+          onPointerMove={(e) => {
+            const d = dragRef.current;
+            if (!d) return;
+            const next = Math.min(
+              180,
+              Math.max(1, Math.round(d.val + (d.y - e.clientY) / 5))
+            );
+            if (String(next) !== minutes) {
+              setMinutes(String(next));
+              emit(entry, exit, String(next));
+            }
+          }}
+          onPointerUp={() => (dragRef.current = null)}
+          onPointerCancel={() => (dragRef.current = null)}
+          className="flex shrink-0 cursor-ns-resize touch-none select-none items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3"
+        >
+          <span className="flex flex-col text-[8px] leading-[7px] text-slate-500">
+            <span>▲</span>
+            <span>▼</span>
+          </span>
+          <span className="w-10 text-center text-xl font-semibold text-slate-100">
+            {minutes}
+          </span>
           <span className="text-xs text-slate-500">min</span>
-        </label>
+        </div>
         <EffortScale value={effort} onChange={onEffortChange} />
       </div>
     </div>
